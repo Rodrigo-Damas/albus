@@ -4,8 +4,8 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#f7f8fc" />
-    <meta name="description" content="Juntos: calendário de compromissos e planejamento financeiro para duas pessoas." />
-    <title>Juntos · Calendário financeiro</title>
+    <meta name="description" content="Albus: calendário financeiro e de compromissos para duas pessoas." />
+    <title>Albus · Calendário financeiro</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
@@ -130,7 +130,8 @@ function toInputMoney(cents) { return ((Number(cents)||0)/100).toFixed(2).replac
 
 
 const root = document.getElementById('app');
-const DEMO_KEY = 'juntos-calendar-demo-v1';
+const DEMO_KEY = 'albus-calendar-local-v1';
+const LEGACY_DEMO_KEY = 'juntos-calendar-demo-v1';
 const systemToday = new Date();
 const today = dayKey(systemToday.getFullYear(), systemToday.getMonth()+1, systemToday.getDate());
 const initialMonth = monthKey(today);
@@ -153,25 +154,19 @@ const esc = (text) => String(text ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;',
 const id = () => crypto.randomUUID();
 const friendlyDate = (date) => { const [y,m,d] = date.split('-').map(Number); return new Intl.DateTimeFormat('pt-BR',{weekday:'long',day:'numeric',month:'long'}).format(new Date(y,m-1,d)); };
 const short = (cents) => { const v = Math.round(cents/100); return v>=10000 ? `R$ ${(v/1000).toLocaleString('pt-BR',{maximumFractionDigits:1})}k` : `R$ ${v.toLocaleString('pt-BR')}`; };
-const seedDate = (day) => dayKey(systemToday.getFullYear(),systemToday.getMonth()+1,day);
-const sampleEntries = () => [
-  {id:id(),entry_type:'income',title:'Receita do casal',entry_date:seedDate(3),amount_cents:800000,status:'received',category:'Salário',notes:'Dados fictícios para demonstração',frequency:'none'},
-  {id:id(),entry_type:'expense',title:'Aluguel',entry_date:seedDate(5),amount_cents:160000,status:'planned',category:'Moradia',notes:'Despesa fixa',frequency:'monthly'},
-  {id:id(),entry_type:'expense',title:'Mercado da semana',entry_date:seedDate(7),amount_cents:28000,status:'planned',category:'Alimentação',notes:'',frequency:'none'},
-  {id:id(),entry_type:'expense',title:'Hospedagem Lapinha',entry_date:seedDate(14),amount_cents:31000,status:'planned',category:'Lazer',notes:'Uma diária',frequency:'none'},
-  {id:id(),entry_type:'expense',title:'Aluguel de carro + combustível',entry_date:seedDate(14),amount_cents:64500,status:'planned',category:'Transporte',notes:'R$ 350 aluguel + R$ 245 gasolina + R$ 50 Uber',frequency:'none'},
-  {id:id(),entry_type:'task',title:'Conferir horário de check-in',entry_date:seedDate(13),amount_cents:0,status:'pending',category:'Pessoal',notes:'',frequency:'none'},
-  {id:id(),entry_type:'task',title:'Passeio na serra',entry_date:seedDate(15),amount_cents:0,status:'pending',category:'Lazer',notes:'',frequency:'none'},
-  {id:id(),entry_type:'reserve',title:'Reserva para imprevistos',entry_date:seedDate(20),amount_cents:100000,status:'planned',category:'Precaução',notes:'Transferência para reserva',frequency:'none'},
-  {id:id(),entry_type:'expense',title:'Internet',entry_date:seedDate(24),amount_cents:11000,status:'planned',category:'Casa',notes:'',frequency:'monthly'},
-];
-
 function loadDemo() {
-  let data;
-  try { data = JSON.parse(localStorage.getItem(DEMO_KEY) || 'null'); } catch { data = null; }
-  if (!data || !Array.isArray(data.entries)) data = {entries:sampleEntries(),overrides:[]};
-  state.entries=data.entries; state.overrides=data.overrides;
-  state.household={id:'demo',name:'Nosso planejamento',created_by:'demo'};
+  let data = null;
+  try {
+    // Apaga registros do MVP anterior uma única vez, sem afetar lançamentos futuros.
+    const legacyExisted = localStorage.getItem(LEGACY_DEMO_KEY) !== null;
+    localStorage.removeItem(LEGACY_DEMO_KEY);
+    if (legacyExisted) state.notice = 'Dados de teste removidos deste navegador. Calendário pronto para novos cadastros.';
+    data = JSON.parse(localStorage.getItem(DEMO_KEY) || 'null');
+  } catch { data = null; }
+  if (!data || !Array.isArray(data.entries)) data = {entries:[],overrides:[]};
+  state.entries=data.entries;
+  state.overrides=Array.isArray(data.overrides) ? data.overrides : [];
+  state.household={id:'demo',name:'Meu calendário',created_by:'demo'};
   state.members=[{user_id:'demo',role:'owner'}]; saveDemo();
 }
 function saveDemo() { if(state.mode==='demo') localStorage.setItem(DEMO_KEY,JSON.stringify({entries:state.entries,overrides:state.overrides})); }
@@ -230,14 +225,14 @@ function render() {
   if(state.mode==='online'&&!state.session) {renderAuth();bindAuth();return;}
   const rows=entriesForMonth();
   const sums=summarize(rows);
-  root.innerHTML=`<div class="mobile-nav"><div class="brand"><span class="brand-icon">♥</span>juntos<span class="brand-dot">.</span></div><span class="header-pill">Calendário do casal</span></div>
+  root.innerHTML=`<div class="mobile-nav"><div class="brand"><span class="brand-icon">♥</span>albus<span class="brand-dot">.</span></div><span class="header-pill">Calendário do casal</span></div>
   <div class="app-shell">
   <aside class="sidebar">
-    <div class="brand"><span class="brand-icon">♥</span>juntos<span class="brand-dot">.</span></div>
+    <div class="brand"><span class="brand-icon">♥</span>albus<span class="brand-dot">.</span></div>
     <div><div class="side-caption">ESPAÇO DE TRABALHO</div>
       <button class="nav-item active" type="button">${svg('dashboard')} Visão geral</button>
       <button class="nav-item" data-action="today" type="button">${svg('calendar')} Calendário</button></div>
-    <div class="sidebar-bottom"><div class="household-title">${esc(state.household?.name||'Nosso planejamento')}</div><div class="muted tiny">Seu espaço compartilhado</div>
+    <div class="sidebar-bottom"><div class="household-title">${esc(state.household?.name||'Nosso planejamento')}</div><div class="muted tiny">${state.mode==='demo'?'Somente neste navegador':'Seu espaço compartilhado'}</div>
       <div class="user-avatars"><div class="avatar">${state.mode==='demo'?'A':esc((state.session?.user?.email||'A')[0].toUpperCase())}</div><div class="avatar ${state.members.length<2?'empty':''}">${state.members.length<2?'+':'B'}</div><span class="muted tiny" style="margin-left:9px">${state.members.length}/2 membros</span></div>
       <button type="button" class="invite-btn" data-action="invite">${svg('users')} Convidar parceiro(a)</button></div>
     ${state.mode==='online'?`<button class="logout" data-action="logout">${svg('logout')} Sair da conta</button>`:''}
@@ -247,7 +242,7 @@ function render() {
     <header class="topline"><div><div class="eyebrow">VISÃO GERAL · ${esc(formatMonth(state.month))}</div><h1>Seu mês, mais leve.</h1><div class="top-description">Planejem compromissos e finanças lado a lado.</div></div>
       <div class="top-actions">${state.mode==='online'?'<button class="outline-button" data-action="refresh">'+svg('refresh')+' Atualizar</button>':''}<button class="primary-button" data-action="new" type="button">${svg('plus')} Novo lançamento</button></div>
     </header>
-    ${state.mode==='demo'?`<div class="demo-banner">${svg('info')} <span><b>Modo demonstração:</b> dados fictícios, salvos somente neste navegador. Ainda não há compartilhamento entre duas contas.</span></div>`:''}
+    ${state.mode==='demo'?`<div class="demo-banner">${svg('info')} <span><b>Modo local:</b> calendário vazio para seus cadastros. Os dados ficam somente neste navegador, sem backup automático ou compartilhamento entre contas.</span></div>`:''}
     ${state.notice?`<div class="success">${esc(state.notice)}</div>`:''}
     ${state.error?`<div class="error">${esc(state.error)}</div>`:''}
     <section class="summary-grid" aria-label="Resumo financeiro mensal">
@@ -257,7 +252,7 @@ function render() {
       ${summaryCard('balance','Saldo livre projetado',sums.balance,'Após despesas e reservas')}
     </section>
     <section class="dashboard">${renderCalendar(rows)}${renderDetails(rows)}</section>
-    <p class="hint" style="margin-top:19px">Saldo realizado: ${formatMoney(sums.realized)} · Recebido: ${formatMoney(sums.received)} · Pendente de pagamento: ${formatMoney(sums.pending)}. Valores da demonstração são ilustrativos.</p>
+    <p class="hint" style="margin-top:19px">Saldo realizado: ${formatMoney(sums.realized)} · Recebido: ${formatMoney(sums.received)} · Pendente de pagamento: ${formatMoney(sums.pending)}.</p>
   </main></div>${renderModal()}`;
   bindActions();
 }
@@ -303,7 +298,7 @@ function renderModal() {
   const modal=state.modal; if(!modal)return '';
   if(modal.kind==='invite') return `<div class="modal-backdrop" data-backdrop="true"><div class="modal" role="dialog" aria-modal="true" aria-label="Compartilhar calendário"><div class="modal-header"><h2>Compartilhar calendário</h2><button class="close-btn" data-action="close">${svg('close')}</button></div>
     ${modal.error?`<div class="error">${esc(modal.error)}</div>`:''}
-    ${state.mode==='demo'?`<div class="notice">A demonstração é local. Para convidar outra pessoa, conecte um projeto Supabase próprio em <code>config.js</code> e publique o site.</div>`:
+    ${state.mode==='demo'?`<div class="notice">O armazenamento ainda é local. Para convidar outra pessoa e sincronizar cadastros, será preciso configurar um projeto Supabase próprio com autenticação e permissões de acesso.</div>`:
       state.members.length>=2?`<div class="notice">O espaço já tem duas pessoas. Este MVP aceita no máximo dois membros.</div>`:`<p class="small muted">Gere um link privado com validade de 7 dias. Seu parceiro precisa criar uma conta ou entrar com e-mail antes de aceitar o convite.</p><button class="primary-button wide" data-action="generate-invite">${svg('users')} Gerar link de convite</button>${modal.link?`<div class="field" style="margin-top:18px"><label>Link de convite</label><input readonly id="invite-link" value="${esc(modal.link)}" /></div><button class="outline-button wide" data-action="copy-invite">${svg('copy')} Copiar link</button>`:''}`}
     <button class="text-button wide" data-action="close" style="margin-top:12px">Fechar</button></div></div>`;
   const entry=modal.entry||null;const editing=Boolean(entry);
@@ -324,7 +319,7 @@ function renderModal() {
 }
 function renderAuth() {
   const registering=state.authMode==='register';
-  root.innerHTML=`<div class="auth-screen"><div class="auth-box"><div class="brand"><span class="brand-icon">♥</span>juntos<span class="brand-dot">.</span></div><h1 style="text-align:center">${registering?'Criar sua conta':'Bem-vindo de volta'}</h1><p style="text-align:center">Organizem o mês, compartilhem os planos e acompanhem o dinheiro no mesmo calendário.</p>
+  root.innerHTML=`<div class="auth-screen"><div class="auth-box"><div class="brand"><span class="brand-icon">♥</span>albus<span class="brand-dot">.</span></div><h1 style="text-align:center">${registering?'Criar sua conta':'Bem-vindo de volta'}</h1><p style="text-align:center">Organizem o mês, compartilhem os planos e acompanhem o dinheiro no mesmo calendário.</p>
     ${state.error?`<div class="error">${esc(state.error)}</div>`:''}${state.notice?`<div class="success">${esc(state.notice)}</div>`:''}
     <form id="auth-form"><div class="field"><label>E-mail</label><input name="email" type="email" required autocomplete="email" placeholder="voce@exemplo.com" /></div>
     <div class="field"><label>Senha</label><input name="password" type="password" required minlength="8" autocomplete="${registering?'new-password':'current-password'}" placeholder="Mínimo de 8 caracteres" /></div>
