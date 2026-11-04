@@ -1,7 +1,7 @@
 
 (function(){
 'use strict';
-const E=AlbusEngine,A=AlbusAccess,G=AlbusGoals;
+const E=AlbusEngine,A=AlbusAccess,G=AlbusGoals,M=AlbusMoneyMask;
 const KEY='albus-calendar-local-v1',root=document.getElementById('app');
 const TYPES={event:'Evento',expense:'Despesa',income:'Receita',goal:'Objetivo',task:'Tarefa',reserve:'Aporte / reserva'};
 const CATEGORIES=['Salário','Alimentação','Transporte','Saúde','Moradia','Lazer','Educação','Casa','Pessoal','Outros','Precaução'];
@@ -12,6 +12,7 @@ const id=()=>crypto?.randomUUID?.()||('albus-'+Date.now()+'-'+Math.random().toSt
 const today=()=>{const x=new Date();return x.getFullYear()+'-'+String(x.getMonth()+1).padStart(2,'0')+'-'+String(x.getDate()).padStart(2,'0')};
 const options=(items,v)=>items.map(([id,text])=>'<option value="'+esc(id)+'" '+(String(id)===String(v)?'selected':'')+'>'+esc(text)+'</option>').join('');
 const mny=n=>E.money(n||0);
+const moneyInput=(name,cents,more='')=>'<input name="'+name+'" data-money="true" inputmode="numeric" autocomplete="off" '+more+' value="'+esc(M.fromCents(cents||0))+'"/>';
 const fmt=d=>E.dateParts(d)?d.split('-').reverse().join('/'):'';
 const monthTitle=m=>{const [y,mo]=m.split('-').map(Number);let text=new Intl.DateTimeFormat('pt-BR',{month:'long',year:'numeric'}).format(new Date(y,mo-1,1));return text[0].toUpperCase()+text.slice(1)};
 function load(){
@@ -68,16 +69,27 @@ function dashboardCards(){
  ];
  return '<section class="albus-summary albus-compact-summary">'+data.map(x=>'<article class="summary-card '+x[3]+'"><div class="summary-kicker">'+esc(x[0])+'</div><div class="summary-value">'+mny(x[1])+'</div><div class="summary-meta">'+esc(x[2])+'</div></article>').join('')+'</section>';
 }
+function filterLabel(id,label,help){
+ return '<div class="albus-filter-label"><label for="'+id+'">'+label+'</label>'+
+ '<details class="albus-filter-help"><summary title="Entenda: '+esc(label)+'" aria-label="Explicação de '+esc(label)+'">i</summary>'+
+ '<p>'+esc(help)+'</p></details></div>';
+}
 function filters(){
  const s=db.settings;
- return '<aside class="surface albus-filter-panel"><strong>Filtros</strong><div class="albus-filter-field"><label for="owner-filter">Exibir lançamentos</label><select id="owner-filter">'+
+ return '<aside class="surface albus-filter-panel"><strong>Filtros</strong><div class="albus-filter-field">'+
+ filterLabel('owner-filter','Exibir lançamentos','Escolha visualizar todos os lançamentos acessíveis, somente os compartilhados ou aqueles em que Rodrigo ou Danelle participam. Os valores do resumo também acompanham o filtro.')+
+ '<select id="owner-filter">'+
  options([['all','Todos acessíveis'],['shared','Compartilhados'],...MEMBER.map(x=>[x.id,'Participa: '+x.name])],state.filter)+
- '</select></div><div class="albus-filter-field"><label for="payment-profile">Como costuma pagar?</label><select id="payment-profile">'+
+ '</select></div><div class="albus-filter-field">'+
+ filterLabel('payment-profile','Como costuma pagar?','Essa opção define apenas a forma de pagamento sugerida em novas despesas. À vista, o pagamento ocorre no mês da compra; no cartão, pode vencer em outro mês conforme fechamento e vencimento configurados. Não altera lançamentos já salvos.')+
+ '<select id="payment-profile">'+
  options([['same','No próprio mês'],['credit','Cartão posteriormente']],s.profile)+
- '</select></div><div class="albus-filter-field"><label for="calendar-view">Mostrar despesas por</label><select id="calendar-view">'+
+ '</select></div><div class="albus-filter-field">'+
+ filterLabel('calendar-view','Mostrar despesas por','Por pagamento mostra quando o dinheiro precisa sair, inclusive faturas de compras de meses anteriores. Por compra mostra quando o gasto foi assumido. O resumo financeiro permanece organizado por vencimento.')+
+ '<select id="calendar-view">'+
  options([['cash','Pagamento'],['purchase','Compra']],s.view)+
  '</select></div>'+button('⚙ Cartão e imprevistos','settings','','outline-button wide')+
- '<div class="albus-side-tip">Selecione uma data. Use <b>Criar</b> para adicionar eventos, despesas, receitas, caixinhas e tarefas.</div></aside>';
+ '<div class="albus-side-tip">Selecione uma data no calendário. No detalhamento à direita, use <b>Criar</b> para registrar seus itens.</div></aside>';
 }
 function calendar(){
  const [year,month]=state.month.split('-').map(Number),first=new Date(year,month-1,1).getDay(),n=E.daysInMonth(state.month);
@@ -94,7 +106,7 @@ function calendar(){
     (chips.length>2?'<span class="albus-overflow">+'+(chips.length-2)+' itens</span>':'')+'</div>');
  }
  return '<article class="surface calendar"><div class="albus-month"><div><h2>'+esc(monthTitle(state.month))+'</h2><div class="albus-small">Selecione o dia. Arraste itens para outra data.</div></div>'+
- '<div class="albus-month-actions">'+createMenu()+button('‹','previous','','icon-button')+button('›','next','','icon-button')+'</div></div>'+
+ '<div class="albus-month-actions">'+button('Hoje','today','','outline-button albus-calendar-today')+button('‹','previous','','icon-button')+button('›','next','','icon-button')+'</div></div>'+
  '<div class="albus-date-grid">'+['DOM','SEG','TER','QUA','QUI','SEX','SÁB'].map(x=>'<div class="albus-weekday">'+x+'</div>').join('')+out.join('')+
  '</div><div class="albus-calendar-foot"><span>Verde: entradas · Vermelho: pagamentos</span><span>Arraste para reagendar</span></div></article>';
 }
@@ -119,9 +131,10 @@ function details(){
  return '<aside class="surface details"><div class="albus-detail-heading"><div><div class="details-label">DETALHAMENTO DO DIA</div><h2>'+fmt(day)+'</h2></div></div>'+
  '<div class="day-overview"><div class="overview-card"><span class="small-label">Entradas</span><strong class="positive">'+mny(entriesAt.filter(x=>x.entry_type==='income').reduce((a,x)=>a+Number(x.amount_cents||0),0))+'</strong></div>'+
  '<div class="overview-card"><span class="small-label">Saídas</span><strong class="negative">'+mny(entriesAt.filter(x=>x.entry_type==='expense').reduce((a,x)=>a+Number(x.amount_cents||0),0))+'</strong></div></div>'+
+ '<div class="albus-details-create">'+createMenu()+'</div>'+
  '<div class="albus-detail-section"><h3>Eventos · '+ev.length+'</h3>'+(eventHTML||'<div class="albus-details-empty">Nenhum evento neste dia.</div>')+'</div>'+
  '<div class="albus-detail-section"><h3>Lançamentos · '+others.length+'</h3>'+(others.map(x=>row(x)).join('')||'<div class="albus-details-empty">Nenhum lançamento neste dia.</div>')+'</div>'+
- '<p class="albus-help">Para adicionar algo, use <b>Criar</b> no calendário. Eventos e despesas podem ser movidos para outros dias.</p></aside>';
+ '<p class="albus-help">Crie itens para a data selecionada ou arraste eventos e despesas para reorganizar o mês.</p></aside>';
 }
 function entryForm(m){
  const old=db.entries.find(x=>x.id===m.id),kind=old?.entry_type||m.kind||'expense',date=old?.entry_date||m.date||state.day;
@@ -130,7 +143,7 @@ function entryForm(m){
  '<form id="entry-form"><div class="field"><label>Título</label><input name="title" id="entry-title" required maxlength="100" value="'+esc(old?.title||'')+'" placeholder="Ex.: salário, consulta, mercado"/><div id="title-suggestions" class="albus-suggestions"></div></div>'+
  '<div class="field-row"><div class="field"><label>Tipo</label><select name="entry_type" id="entry-type">'+options(Object.entries(TYPES).filter(x=>!['event','goal'].includes(x[0])),kind)+'</select></div>'+
  '<div class="field"><label id="entry-date-label">Data</label><input type="date" name="entry_date" id="entry-date" value="'+date+'" required/></div></div>'+
- '<div class="field-row" id="amount-row"><div class="field"><label>Valor (R$)</label><input name="amount" inputmode="decimal" value="'+esc(((old?.amount_cents||0)/100).toFixed(2).replace('.',','))+'"/></div>'+
+ '<div class="field-row" id="amount-row"><div class="field"><label>Valor (R$)</label>'+moneyInput('amount',old?.amount_cents||0)+'</div>'+
  '<div class="field"><label>Categoria</label><select id="entry-category" name="category">'+options(CATEGORIES.map(c=>[c,c]),old?.category||(kind==='income'?'Salário':'Outros'))+'</select></div></div>'+
  '<div class="field"><label>Situação</label><select id="entry-status" name="status" data-initial="'+esc(old?.status||'')+'"></select></div>'+
  '<div id="expense-extra"><div class="field"><label>Forma de pagamento</label><select name="payment_method" id="payment-method">'+options([['pix','Pix'],['debit','Débito'],['cash','Dinheiro'],['credit','Cartão de crédito']],pm)+'</select></div>'+
@@ -159,9 +172,9 @@ function goalForm(m){
  const old=db.goals.find(x=>x.id===m.id)||{};
  return modal(m.id?'Editar objetivo':'Criar caixinha',
  '<form id="goal-form"><div class="field"><label>Nome do objetivo</label><input name="title" maxlength="100" required value="'+esc(old.title||'')+'" placeholder="Casa própria, viagem, reserva de emergência"/></div>'+
- '<div class="field-row"><div class="field"><label>Meta total (R$)</label><input name="target" required inputmode="decimal" value="'+esc(((old.target_cents||0)/100).toFixed(2).replace('.',','))+'"/></div>'+
- '<div class="field"><label>Saldo inicial real (R$)</label><input name="initial" inputmode="decimal" value="'+esc(((old.initial_cents||0)/100).toFixed(2).replace('.',','))+'"/></div></div>'+
- '<div class="field-row"><div class="field"><label>Aporte mensal pretendido (R$)</label><input name="monthly" inputmode="decimal" value="'+esc(((old.monthly_cents||0)/100).toFixed(2).replace('.',','))+'"/></div>'+
+ '<div class="field-row"><div class="field"><label>Meta total (R$)</label>'+moneyInput('target',old.target_cents||0,'required')+'</div>'+
+ '<div class="field"><label>Saldo inicial real (R$)</label>'+moneyInput('initial',old.initial_cents||0)+'</div></div>'+
+ '<div class="field-row"><div class="field"><label>Aporte mensal pretendido (R$)</label>'+moneyInput('monthly',old.monthly_cents||0)+'</div>'+
  '<div class="field"><label>% do CDI</label><input name="cdi_percent" type="number" min="0" max="300" step=".1" required value="'+(old.cdi_percent??100)+'"/></div></div>'+
  '<div class="field"><label>CDI anual manual (%) para contingência</label><input name="manual_cdi_annual" type="number" min="0" max="100" step=".01" value="'+(old.manual_cdi_annual??'')+'" placeholder="Opcional, se a consulta falhar"/></div>'+
  ownerInputs(m.id?old:null)+
@@ -182,7 +195,7 @@ function goalDetails(m){
 function contributionForm(m){
  const goal=db.goals.find(x=>x.id===m.id);if(!goal)return '';
  return modal('Aporte · '+goal.title,'<form id="contribution-form">'+
- '<div class="field"><label>Valor (R$)</label><input name="amount" required inputmode="decimal" value="'+esc((goal.monthly_cents/100).toFixed(2).replace('.',','))+'"/></div>'+
+ '<div class="field"><label>Valor (R$)</label>'+moneyInput('amount',goal.monthly_cents||0,'required')+'</div>'+
  '<div class="field"><label>Data do aporte</label><input name="entry_date" type="date" required value="'+state.day+'"/></div>'+
  '<div class="field"><label>Status</label><select name="status"><option value="planned">Planejado</option><option value="set_aside">Aportado (saldo real)</option></select></div>'+
  '<label class="field-checkbox"><input name="monthly" type="checkbox"/> Repetir mensalmente</label>'+
@@ -195,7 +208,7 @@ function settingsForm(){
  '<div class="field"><label>Vencimento</label><input type="number" min="1" max="31" required name="dueDay" value="'+s.dueDay+'"/></div></div>'+
  '<div class="field-row"><div class="field"><label>Variação estimada (%)</label><input type="number" min="0" max="100" required name="variationPercent" value="'+s.variationPercent+'"/></div>'+
  '<div class="field"><label>Imprevistos (%)</label><input type="number" min="0" max="100" required name="provisionPercent" value="'+s.provisionPercent+'"/></div></div>'+
- '<div class="field"><label>Provisão fixa de imprevistos (R$)</label><input name="provisionFixed" value="'+esc(((s.provisionFixedCents||0)/100).toFixed(2).replace('.',','))+'"/></div>'+
+ '<div class="field"><label>Provisão fixa de imprevistos (R$)</label>'+moneyInput('provisionFixed',s.provisionFixedCents||0)+'</div>'+
  '<div class="form-footer">'+button('Cancelar','close','','secondary-button')+' <button type="submit" class="primary-button">Salvar</button></div></form>');
 }
 function moveForm(m){
@@ -210,7 +223,7 @@ function render(){
  '<div class="albus-top-center">Calendário e planejamento da família</div><div class="albus-top-right">Perfil de teste <select id="demo-user">'+
  options(MEMBER.map(x=>[x.id,x.name]),state.user)+'</select><span class="albus-family-pill">Família</span></div></header>'+
  '<main class="albus-main"><div class="albus-title-row albus-compact-head"><div><div class="albus-eyebrow">CALENDÁRIO · '+esc(monthTitle(state.month))+'</div>'+
- '<h1>Seu calendário.</h1></div>'+button('Hoje','today','','outline-button')+'</div>'+
+ '<h1>Seu calendário.</h1></div></div>'+
  '<div class="albus-note">Ambiente de testes: Rodrigo e Danelle são perfis simulados. Os dados ainda ficam neste navegador, sem login real ou sincronização.</div>'+
  (state.error?'<div class="error">'+esc(state.error)+'</div>':'')+(state.message?'<div class="success">'+esc(state.message)+'</div>':'')+
  dashboardCards()+goalCards()+
@@ -367,6 +380,7 @@ function bind(){
     if(!confirm('Excluir caixinha?'))return;db.goals=db.goals.filter(x=>x.id!==item);state.modal=null;safe();return render();
   }
  }));
+ root.querySelectorAll('input[data-money="true"]').forEach(M.bind);
  const listen=(id,fn)=>root.querySelector(id)?.addEventListener('change',fn);
  listen('#demo-user',e=>{state.user=e.target.value;state.filter='all';render()});
  listen('#owner-filter',e=>{state.filter=e.target.value;render()});
