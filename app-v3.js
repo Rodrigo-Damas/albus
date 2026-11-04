@@ -89,6 +89,42 @@ function dashboardCards(){
  '<section class="albus-month-origin"><div class="albus-origin-heading"><strong>Origem dos pagamentos em '+esc(m)+'</strong><span>Faturas de compras anteriores vencem agora, sem duplicar o gasto.</span></div>'+
  cashBreakdown(paid,'do mês')+'</section>';
 }
+let activeHelp=null;
+function closeHelp(){
+ if(!activeHelp)return;
+ activeHelp.button?.setAttribute('aria-expanded','false');
+ activeHelp.popup?.remove();
+ activeHelp=null;
+}
+function openHelp(trigger){
+ if(activeHelp?.button===trigger){closeHelp();return;}
+ closeHelp();
+ const popup=document.createElement('div');
+ popup.className='albus-help-popover';
+ popup.setAttribute('role','tooltip');
+ popup.id='albus-filter-info-active';
+ popup.textContent=trigger.dataset.help||'';
+ document.body.appendChild(popup);
+ trigger.setAttribute('aria-expanded','true');
+ const bounds=trigger.getBoundingClientRect();
+ const vw=window.innerWidth,vh=window.innerHeight;
+ const width=Math.min(320,vw-24);
+ popup.style.width=width+'px';
+ let left=bounds.right+12;
+ if(left+width>vw-12)left=bounds.left-width-12;
+ popup.style.left=Math.max(12,Math.min(left,vw-width-12))+'px';
+ const height=popup.getBoundingClientRect().height;
+ popup.style.top=Math.max(12,Math.min(bounds.top,vh-height-12))+'px';
+ activeHelp={button:trigger,popup};
+}
+document.addEventListener?.('pointerdown',ev=>{
+ if(activeHelp&&!activeHelp.popup.contains(ev.target)&&!activeHelp.button.contains(ev.target))closeHelp();
+});
+document.addEventListener?.('keydown',ev=>{if(ev.key==='Escape')closeHelp();});
+function filterLabel(id,label,help){
+ return '<div class="albus-filter-label"><label for="'+id+'">'+label+'</label>'+
+ '<button type="button" class="albus-info-trigger" data-help="'+esc(help)+'" aria-expanded="false" aria-label="Explicação de '+esc(label)+'">i</button></div>';
+}
 function filters(){
  const s=db.settings;
  return '<aside class="surface albus-filter-panel"><strong>Filtros</strong><div class="albus-filter-field">'+
