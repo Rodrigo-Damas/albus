@@ -132,7 +132,7 @@ function entryForm(m){
  '<div class="field"><label id="entry-date-label">Data</label><input type="date" name="entry_date" id="entry-date" value="'+date+'" required/></div></div>'+
  '<div class="field-row" id="amount-row"><div class="field"><label>Valor (R$)</label><input name="amount" inputmode="decimal" value="'+esc(((old?.amount_cents||0)/100).toFixed(2).replace('.',','))+'"/></div>'+
  '<div class="field"><label>Categoria</label><select id="entry-category" name="category">'+options(CATEGORIES.map(c=>[c,c]),old?.category||(kind==='income'?'Salário':'Outros'))+'</select></div></div>'+
- '<div class="field"><label>Situação</label><select id="entry-status" name="status"></select></div>'+
+ '<div class="field"><label>Situação</label><select id="entry-status" name="status" data-initial="'+esc(old?.status||'')+'"></select></div>'+
  '<div id="expense-extra"><div class="field"><label>Forma de pagamento</label><select name="payment_method" id="payment-method">'+options([['pix','Pix'],['debit','Débito'],['cash','Dinheiro'],['credit','Cartão de crédito']],pm)+'</select></div>'+
  '<div class="field"><label>Associar a evento (opcional)</label><select name="event_id">'+options([['','Nenhum'],...events().map(x=>[x.id,x.title])],old?.event_id||m.eventId||'')+'</select></div>'+
  '<label class="field-checkbox"><input name="variable" type="checkbox" '+(old?.variable!==false?'checked':'')+'/> Despesa variável para cálculo de imprevistos</label><div id="credit-preview" class="hint-inline"></div></div>'+
@@ -288,6 +288,7 @@ function submitContribution(ev){
  if(!g)throw Error('Caixinha não encontrada.');
  const amount=E.parseMoney(f.get('amount')),date=String(f.get('entry_date')||'');
  if(!amount||!E.dateParts(date))throw Error('Informe valor e data válidos.');
+ if(f.has('monthly')&&f.get('status')==='set_aside')throw Error('Um aporte recorrente precisa ficar como planejado. Confirme cada mês individualmente antes de somar ao saldo real.');
  db.entries.push(A.normalizeItem({id:id(),entry_type:'reserve',goal_id:g.id,title:'Aporte · '+g.title,entry_date:date,amount_cents:amount,status:String(f.get('status')),frequency:f.has('monthly')?'monthly':'none',created_by:state.user,visibility:g.visibility,responsible_ids:g.responsible_ids,category:'Precaução',payment_method:'pix'}));
  state.day=date;state.month=E.monthOf(date);state.modal=null;state.message='Aporte registrado. Somente aportes realizados somam ao saldo real.';safe();render();
  }catch(e){error(e)}
@@ -315,7 +316,7 @@ function statusOptions(type){
 }
 function updateEntryUI(){
  const form=root.querySelector('#entry-form');if(!form)return;
- const type=form.elements.entry_type.value,dateLabel=root.querySelector('#entry-date-label'),status=root.querySelector('#entry-status'),current=status.value;
+ const type=form.elements.entry_type.value,dateLabel=root.querySelector('#entry-date-label'),status=root.querySelector('#entry-status'),current=status.dataset.initial||status.value;delete status.dataset.initial;
  if(dateLabel)dateLabel.textContent={expense:'Data da compra',income:'Data do recebimento',reserve:'Data do aporte',task:'Data da tarefa'}[type];
  status.innerHTML=options(statusOptions(type),statusOptions(type).some(x=>x[0]===current)?current:statusOptions(type)[0][0]);
  root.querySelector('#amount-row').style.display=type==='task'?'none':'grid';
