@@ -7,13 +7,16 @@
     // É uma aproximação para simulação, não rendimento real creditado.
     return Math.pow(1+annual, multiplier/12)-1;
   }
-  function realBalance(goal,entries){
+  function realBalance(goal,entries,overrides=[]){
     const start=money(goal.initial_cents);
     const postings=(entries||[]).filter(e=>e.entry_type==='reserve'&&e.goal_id===goal.id&&e.status==='set_aside');
-    return start+postings.reduce((acc,e)=>acc+money(e.amount_cents),0);
+    const valid=new Map((entries||[]).filter(e=>e.entry_type==='reserve'&&e.goal_id===goal.id&&e.frequency!=='none').map(e=>[e.id,e]));
+    const recurring=(overrides||[]).filter(o=>!o.deleted&&o.status==='set_aside'&&valid.has(o.entry_id));
+    const confirmed=postings.filter(e=>e.frequency==='none').reduce((acc,e)=>acc+money(e.amount_cents),0);
+    return start+confirmed+recurring.reduce((acc,o)=>acc+money(o.amount_cents??valid.get(o.entry_id).amount_cents),0);
   }
-  function forecast(goal,entries,rate,asOfMonth){
-    const actual=realBalance(goal,entries),target=money(goal.target_cents),monthly=money(goal.monthly_cents);
+  function forecast(goal,entries,rate,asOfMonth,overrides=[]){
+    const actual=realBalance(goal,entries,overrides),target=money(goal.target_cents),monthly=money(goal.monthly_cents);
     const annual=Number(rate?.annualPercent ?? goal.manual_cdi_annual ?? 0);
     const factor=projectedRate(annual,goal.cdi_percent??100);
     let months=0,balance=actual;
