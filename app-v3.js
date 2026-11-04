@@ -429,10 +429,11 @@ function bind(){
  // Delegação por Pointer Events: funciona com mouse, toque e caneta.
  // Não depende do drag-and-drop HTML nativo, que falha em navegadores móveis.
  let gesture=null;
- const isInteractive=el=>!!el.closest('button,input,select,textarea,a,[role="button"]');
+ const isInteractive=el=>!!el.closest('button,input,select,textarea,a');
  root.querySelectorAll('[data-drag-kind]').forEach(source=>{
    source.addEventListener('pointerdown',ev=>{
      if(ev.button!==0||isInteractive(ev.target))return;
+     if(ev.pointerType==='touch'&&!ev.target.closest('.albus-drag-handle,.albus-chip'))return;
      const target=ev.target.closest('[data-drag-kind]');if(target!==source)return;
      gesture={pointerId:ev.pointerId,kind:source.dataset.dragKind,id:source.dataset.dragId,
        occurrence:source.dataset.occurrence||null,startX:ev.clientX,startY:ev.clientY,active:false,source,hover:null};
