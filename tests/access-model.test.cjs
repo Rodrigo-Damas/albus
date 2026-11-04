@@ -10,7 +10,7 @@ const A=context.AlbusAccess;
 test('dois integrantes no workspace familiar',()=>{
   assert.equal(A.DEFAULT_MEMBERS.length,2);
   assert.equal(A.DEFAULT_MEMBERS[0].name,'Rodrigo');
-  assert.equal(A.DEFAULT_MEMBERS[1].name,'Danelle');
+  assert.equal(A.DEFAULT_MEMBERS[1].name,'Danielle');
   assert.equal(A.WORKSPACE_ID,'familia-local');
 });
 test('lançamentos antigos permanecem visíveis sem descarte',()=>{
@@ -23,7 +23,7 @@ test('lançamentos antigos permanecem visíveis sem descarte',()=>{
 });
 test('despesa compartilhada aceita dois responsáveis',()=>{
   const d=A.normalizeItem({id:'compra',created_by:'rodrigo',visibility:'shared',responsible_ids:['rodrigo','daniele']});
-  assert.equal(A.responsibleLabel(d),'Rodrigo e Danelle');
+  assert.equal(A.responsibleLabel(d),'Rodrigo e Danielle');
   assert.equal(A.visibleItems([d],'daniele','all').length,1);
   assert.equal(A.visibleItems([d],'daniele','rodrigo').length,1);
   assert.equal(A.visibleItems([d],'daniele','daniele').length,1);
@@ -43,6 +43,6 @@ test('responsáveis privados só podem ser o criador',()=>{
   assert.equal(actual.responsible_ids.length,1);
 });
 test('usuário conectado não é inferido a partir do nome de uma despesa',()=>{
-  const item=A.normalizeItem({id:'x',title:'Salário Danelle',created_by:'rodrigo',visibility:'shared',responsible_ids:['rodrigo']});
+  const item=A.normalizeItem({id:'x',title:'Salário Danielle',created_by:'rodrigo',visibility:'shared',responsible_ids:['rodrigo']});
   assert.equal(A.responsibleLabel(item),'Rodrigo');
 });
