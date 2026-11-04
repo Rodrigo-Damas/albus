@@ -82,10 +82,11 @@ function dashboardCards(){
  ['Receitas de '+m,s.income,'Entradas previstas','income'],
  ['Pagamentos previstos',s.expense,'Pagos: '+mny(s.paid),'expense'],
  ['Reservas e imprevistos',s.reserve+s.provision,'Provisão: '+mny(s.provision),'reserve'],
- [balance<0?'Déficit a cobrir':balance===0?'Orçamento distribuído':'Valor a destinar',Math.abs(balance),'Caixa do mês','balance']
+ [balance<0?'Déficit a cobrir':balance===0?'Orçamento distribuído':'Valor a destinar',balance,
+  balance<0?'Faltam recursos para o mês':balance===0?'Planejamento equilibrado':'Disponível para distribuir','balance']
  ];
  const paid=cashSources(E.occurrencesForMonth(entries(),db.overrides,state.month,db.settings,'cash'),state.month);
- return '<section class="albus-summary albus-compact-summary">'+data.map(x=>'<article class="summary-card '+x[3]+'"><div class="summary-kicker">'+esc(x[0])+'</div><div class="summary-value">'+mny(x[1])+'</div><div class="summary-meta">'+esc(x[2])+'</div></article>').join('')+'</section>'+
+ return '<section class="albus-summary albus-compact-summary">'+data.map(x=>'<article class="summary-card '+x[3]+(x[3]==='balance'&&x[1]===0?' zero':'')+(x[3]==='balance'&&x[1]<0?' negative':'')+'"><div class="summary-kicker">'+esc(x[0])+'</div><div class="summary-value">'+mny(x[1])+'</div><div class="summary-meta">'+esc(x[2])+'</div></article>').join('')+'</section>'+
  '<section class="albus-month-origin"><div class="albus-origin-heading"><strong>Origem dos pagamentos em '+esc(m)+'</strong><span>Faturas de compras anteriores vencem agora, sem duplicar o gasto.</span></div>'+
  cashBreakdown(paid,'do mês')+'</section>';
 }
@@ -519,11 +520,14 @@ function updateStickySummary(){
  const summary=root.querySelector('#financial-sticky'),marker=root.querySelector('.albus-sticky-sentinel');
  if(!summary||!marker)return;
  // O cabeçalho do aplicativo rola normalmente; só o resumo permanece visível.
+ if(!marker.getBoundingClientRect||!summary.classList)return;
  const pinned=marker.getBoundingClientRect().bottom<=1;
  summary.classList.toggle('is-stuck',pinned);
 }
-window.addEventListener('scroll',updateStickySummary,{passive:true});
-window.addEventListener('resize',updateStickySummary);
+if(typeof window!=='undefined'&&window.addEventListener){
+ window.addEventListener('scroll',updateStickySummary,{passive:true});
+ window.addEventListener('resize',updateStickySummary);
+}
 function bind(){
  updateStickySummary();
  root.querySelectorAll('[data-action]').forEach(el=>el.addEventListener('click',event=>{
