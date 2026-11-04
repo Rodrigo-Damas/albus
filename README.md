@@ -85,3 +85,12 @@ A PR #3 agora ativa `app-v3.js` e `goals.js` a partir de `index.html`; os arquiv
 **Segurança e dados:** mantém `albus-calendar-local-v1` e os cadastros anteriores. Não há autenticação, sincronização real, backup, gerenciamento de cartões múltiplos nem conciliação bancária. A PR não foi incorporada à `main`.
 
 **Testes:** arquivos `tests/engine.test.cjs`, `tests/access-model.test.cjs`, `tests/goals-flow.test.cjs`. Inspeção de sintaxe e renderização inicial concluída; interações de formulários e movimento entre dias precisam ser testadas manualmente no preview.
+
+## Refinamento do fluxo de criação e filtros (04/11/2026)
+
+- O botão **Hoje** está no cabeçalho do calendário, junto às setas para navegar entre meses. A ação seleciona a data atual e abre o mês correspondente.
+- O menu único **Criar** passou para o painel **Detalhamento do dia**, imediatamente após os totais de entradas e saídas. Os cinco tipos permanecem: Evento, Despesa, Receita, Objetivo e Tarefa.
+- Os filtros **Exibir lançamentos**, **Como costuma pagar?** e **Mostrar despesas por** receberam indicadores `i` com explicações contextuais, acessíveis por clique e teclado.
+- Campos de valores monetários em receitas, despesas, caixinhas, aportes e provisão de imprevistos exibem **R$ 0,01**, **R$ 12,34**, etc. enquanto o usuário digita. A máscara formata apenas a exibição e mantém o valor em centavos para cálculos/persistência.
+- Máscara reutilizável: `currency-mask.js`. Testes: `node --test tests/creation-ux.test.cjs`.
+- Os dados existentes no `localStorage` e a branch principal foram mantidos. Não há autenticação nem persistência em servidor nesta etapa.
