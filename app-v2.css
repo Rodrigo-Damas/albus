@@ -261,3 +261,15 @@
  .albus-details-create .albus-create-menu {position:relative;top:5px;right:auto;width:100%;box-shadow:0 5px 19px #20295218;}
  .albus-filter-help p {right:0;left:auto;}
 }
+
+/* Reagendamento seguro com mouse/caneta/toque e backup de dados. */
+.albus-chip {touch-action:none;user-select:none;-webkit-user-select:none;cursor:grab;}
+.albus-chip:active {cursor:grabbing;}
+.albus-row .albus-drag-handle,.albus-event .albus-drag-handle {touch-action:none;user-select:none;-webkit-user-select:none;cursor:grab;display:inline-flex;align-items:center;justify-content:center;min-width:20px;min-height:24px;}
+.albus-row,.albus-event {user-select:none;-webkit-user-select:none;}
+.albus-row .text,.albus-event .albus-small {user-select:text;-webkit-user-select:text;}
+.albus-row.albus-dragging,.albus-event.albus-dragging,.albus-chip.albus-dragging {opacity:.55;cursor:grabbing;outline:2px dashed #7a85dc;outline-offset:-2px;}
+.albus-day.drop-on {background:#e5eaff!important;outline:2px solid #626edd!important;outline-offset:-3px;}
+.albus-backup-button {border:1px solid #e1e5f2;background:#fff;color:#5f6b96;border-radius:8px;padding:7px 9px;font-weight:800;font-size:11px;white-space:nowrap;}
+.albus-backup-button:hover {background:#f0f3ff;}
+@media(max-width:590px){.albus-top-right {gap:5px}.albus-backup-button {padding:6px 7px;font-size:10px}}
