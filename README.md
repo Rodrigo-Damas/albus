@@ -108,3 +108,12 @@ A PR #3 agora ativa `app-v3.js` e `goals.js` a partir de `index.html`; os arquiv
 - **Testes:** `node --test tests/drag-backup.test.cjs` cobre gesto de arrastar, movimentação de evento com despesas, recorrência individual, falha de escrita, backup e importação.
 
 **Não houve merge na `main` nem alteração no endereço oficial.**
+
+## Refinamentos de interface, eventos e cartão (04/11/2026)
+
+- **Ajuda contextual:** os ícones `i` dos filtros agora abrem um popover em `document.body` com posição limitada à janela visível. O conteúdo não é cortado pela barra lateral. Fecha por clique fora, ao pressionar Esc ou ao selecionar o próprio ícone.
+- **Editor de eventos:** tanto ao criar quanto ao editar um evento, a seção **Despesas vinculadas** aparece antes das observações. É possível adicionar diversas despesas com nome, valor, data de compra, categoria, pagamento e situação. Uma janela secundária de despesa é aberta por cima do formulário do evento; o botão **Voltar ao evento** ou o X retorna ao formulário original, preservando título, data, participantes e observações.
+- **Resumo e atomicidade:** despesas novas ficam em rascunho e aparecem em lista com valor e total, com opção de remover antes de salvar. O botão **Salvar evento** grava evento e despesas vinculadas juntos, preservando os dados existentes caso a escrita falhe. Despesas criadas posteriormente no cadastro independente ainda podem ser vinculadas ao evento por `Associar a evento`. Despesas existentes vinculadas aparecem no resumo sem serem duplicadas.
+- **Origem dos pagamentos:** os indicadores continuam baseados no mês em que o dinheiro sai. Novo quadro de origem no resumo mensal e detalhamento diário: **Cartão · compras anteriores**, **Cartão · compras do mês** e **Pix, débito e dinheiro**. O valor é somente decomposto, não cobrado em duplicidade. Lançamentos de cartão detalham data de compra e vencimento.
+- **Compatibilidade:** `albus-calendar-local-v1` foi mantido, assim como a importação/exportação de backups e a prévia fixa da branch. Não houve atualização do site oficial ou merge na `main`.
+- **Verificação:** `node --test tests/event-nested-payments.test.cjs` (cinco cenários) valida prévia dos dois modais, gravação conjunta, falha de armazenamento sem perda, cartão comprado em novembro e pago em dezembro, e popover limitado à tela. A navegação manual em navegadores variados ainda deve ser conferida no preview.
