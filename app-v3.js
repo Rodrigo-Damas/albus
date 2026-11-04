@@ -1,7 +1,7 @@
 
 (function(){
 'use strict';
-const E=AlbusEngine,A=AlbusAccess,G=AlbusGoals,M=AlbusMoneyMask,B=AlbusBackup;
+const E=AlbusEngine,A=AlbusAccess,G=AlbusGoals,M=AlbusMoneyMask,B=AlbusBackup,R=AlbusExpenseReuse;
 const KEY='albus-calendar-local-v1',root=document.getElementById('app');
 const TYPES={event:'Evento',expense:'Despesa',income:'Receita',goal:'Objetivo',task:'Tarefa',reserve:'Aporte / reserva'};
 const CATEGORIES=['Salário','Alimentação','Transporte','Saúde','Moradia','Lazer','Educação','Casa','Pessoal','Outros','Precaução'];
@@ -45,7 +45,7 @@ function owners(form,old){
 function createMenu(){
  return '<div class="albus-create-anchor">'+button('+ Criar ▾','toggle-create','aria-expanded="'+state.createOpen+'"','primary-button albus-create-button')+
  (state.createOpen?'<div class="albus-create-menu">'+
- [['event','Evento','Uma ocasião e seus gastos'],['expense','Despesa','Compra, Pix ou cartão'],['income','Receita','Salário ou outra entrada'],['goal','Objetivo','Caixinha de investimentos'],['task','Tarefa','Um compromisso sem valor financeiro']]
+ [['expense','Despesa','Compra, Pix ou cartão'],['income','Receita','Salário ou outra entrada'],['event','Evento','Uma ocasião e seus gastos'],['goal','Objetivo','Caixinha de investimentos'],['task','Tarefa','Um compromisso sem valor financeiro']]
  .map(([type,label,desc])=>'<button data-action="create" data-kind="'+type+'"><strong>'+label+'</strong><small>'+desc+'</small></button>').join('')+'</div>':'')+'</div>';
 }
 function showGoalCard(g){
@@ -174,7 +174,9 @@ function row(x,child=false){
  '<span class="text"><b>'+esc(x.title)+'</b><div class="caption">'+esc(desc)+'</div></span>'+
  (x.entry_type==='task'?'':'<span class="albus-entry-price '+(x.entry_type==='income'?'in':'')+'">'+mny(x.amount_cents)+'</span>')+
  button('✎','edit-entry','data-id="'+esc(x.id)+'" data-occurrence="'+esc(x.occurrence_date||x.entry_date)+'"','albus-tiny-button ghost')+
- button('↔','move-entry','data-id="'+esc(x.id)+'" data-occurrence="'+esc(x.occurrence_date||x.entry_date)+'"','albus-tiny-button ghost')+'</div>';
+ button('↔','move-entry','data-id="'+esc(x.id)+'" data-occurrence="'+esc(x.occurrence_date||x.entry_date)+'"','albus-tiny-button ghost')+
+ (x.entry_type==='expense'?button('⧉','reuse-entry','data-id="'+esc(x.id)+'" data-occurrence="'+esc(x.occurrence_date||x.entry_date)+'" title="Reutilizar despesa" aria-label="Reutilizar despesa"','albus-tiny-button ghost'):'')+
+ (x.entry_type==='expense'&&x.event_id?button('↗','detach-entry','data-id="'+esc(x.id)+'" title="Desvincular despesa do evento" aria-label="Desvincular despesa"','albus-tiny-button ghost'):'')+'</div>';
 }
 function details(){
  const day=state.day,ev=events().filter(x=>x.date===day),entriesAt=monthlyRows().filter(x=>x.display_date===day),linked=new Set(ev.map(x=>x.id));
@@ -182,7 +184,7 @@ function details(){
  const others=entriesAt.filter(x=>!linked.has(x.event_id));
  let eventHTML=ev.map(x=>{
    const children=entries().filter(y=>y.event_id===x.id);
-   return '<div class="albus-event" data-drag-kind="event" data-drag-id="'+esc(x.id)+'"><div class="albus-event-header"><span class="albus-grip albus-drag-handle" title="Segure e arraste">⠿</span><strong class="albus-event-title">'+esc(x.title)+'</strong>'+
+   return '<div class="albus-event" data-drop-event="'+esc(x.id)+'" data-drag-kind="event" data-drag-id="'+esc(x.id)+'"><div class="albus-event-header"><span class="albus-grip albus-drag-handle" title="Segure e arraste">⠿</span><strong class="albus-event-title">'+esc(x.title)+'</strong>'+
    button('✎','edit-event','data-id="'+esc(x.id)+'"','albus-tiny-button ghost')+
    button('↔','move-event','data-id="'+esc(x.id)+'"','albus-tiny-button ghost')+'</div><div class="albus-small">Participantes: '+esc(A.responsibleLabel(x))+'</div>'+
    children.map(y=>row(y,true)).join('')+button('+ Despesa vinculada','add-child','data-id="'+esc(x.id)+'"','albus-tiny-button')+'</div>';
@@ -194,7 +196,7 @@ function details(){
  '<div class="albus-details-create">'+createMenu()+'</div>'+
  '<div class="albus-detail-section"><h3>Eventos · '+ev.length+'</h3>'+(eventHTML||'<div class="albus-details-empty">Nenhum evento neste dia.</div>')+'</div>'+
  '<div class="albus-detail-section"><h3>Lançamentos · '+others.length+'</h3>'+(others.map(x=>row(x)).join('')||'<div class="albus-details-empty">Nenhum lançamento neste dia.</div>')+'</div>'+
- '<p class="albus-help">Crie itens para a data selecionada ou arraste eventos e despesas para reorganizar o mês.</p></aside>';
+ '<p class="albus-help">Arraste uma despesa vinculada para um dia para copiar como independente, ou solte sobre outro evento para criar uma cópia vinculada. Original preservado. Use ⧉ para reutilizar e ↗ para desvincular.</p></aside>';
 }
 function entryForm(m){
  const old=db.entries.find(x=>x.id===m.id),kind=old?.entry_type||m.kind||'expense',date=old?.entry_date||m.date||state.day;
@@ -236,7 +238,8 @@ function eventForm(m){
   [...existing.map(x=>({data:x,pending:false})),...staged.map((x,index)=>({data:x,pending:true,index}))].map(({data,pending,index})=>
    '<div class="albus-event-linked-row"><span><b>'+esc(data.title)+'</b><small>'+esc(data.payment_method==='credit'?'Cartão de crédito':data.payment_method==='debit'?'Débito':data.payment_method==='cash'?'Dinheiro':'Pix')+' · '+fmt(data.entry_date)+(pending?' · Rascunho':' · Salva')+'</small></span>'+
    '<strong>'+mny(data.amount_cents)+'</strong>'+
-   (pending?button('×','event-remove-expense','data-index="'+index+'" aria-label="Remover despesa não salva"','albus-tiny-button ghost'):'')+'</div>').join('')
+   (pending?button('×','event-remove-expense','data-index="'+index+'" aria-label="Remover despesa não salva"','albus-tiny-button ghost'):
+ button('↗','event-detach-expense','data-id="'+esc(data.id)+'" title="Desvincular despesa existente" aria-label="Desvincular despesa"','albus-tiny-button ghost'))+'</div>').join('')
   ||'<div class="albus-details-empty">Nenhuma despesa vinculada.</div>')+'</div></section>';
  return modal(old?'Editar evento':'Criar evento','<form id="event-form"><div class="field"><label>Nome</label><input name="title" required maxlength="100" value="'+esc(draft?.title??old?.title??'')+'"/></div>'+
  '<div class="field"><label>Data do evento</label><input name="date" type="date" required value="'+date+'"/></div>'+
@@ -329,6 +332,52 @@ function contributionForm(m){
  '<div class="albus-warning">Uma previsão recorrente não é saldo realizado. Confirme cada aporte realizado para atualizar o saldo real.</div>'+
  '<div class="form-footer">'+button('Cancelar','close','','secondary-button')+' <button class="primary-button" type="submit">Registrar</button></div></form>');
 }
+
+function reuseForm(m){
+ const source=db.entries.find(x=>x.id===m.id);
+ if(!source||source.entry_type!=='expense')return '';
+ const ref=source.event_id?db.events.find(x=>x.id===source.event_id)?.title:null;
+ const targetEvents=events().filter(x=>x.visibility==='shared'||x.created_by===state.user);
+ return modal('Reutilizar despesa','<div class="albus-warning">Uma <b>nova despesa</b> será contabilizada separadamente. A original'+
+ (ref?' permanecerá no evento '+esc(ref):' permanecerá como está')+'.</div>'+
+ '<form id="reuse-form"><div class="field"><label>Despesa de origem</label><div class="albus-small">'+esc(source.title)+' · '+mny(source.amount_cents)+'</div></div>'+
+ '<div class="field"><label>Destino</label><select name="event_id" id="reuse-event">'+
+ options([['','Despesa independente'],...targetEvents.map(x=>[x.id,'Evento: '+x.title+' · '+fmt(x.date)])],'')+
+ '</select></div><div class="field"><label>Data da nova despesa</label><input type="date" name="date" value="'+esc(state.day)+'" required/></div>'+
+ '<div class="albus-small">Ao escolher um evento, a data dele será usada. A cópia será planejada, mesmo que a original esteja paga.</div>'+
+ '<div class="form-footer">'+button('Cancelar','close','','secondary-button')+' <button type="submit" class="primary-button">Criar cópia</button></div></form>');
+}
+function persistExpenseChange(next,message,date){
+ B.save(localStorage,next);
+ Object.assign(db,next);
+ if(date&&E.dateParts(date)){state.day=date;state.month=E.monthOf(date);}
+ state.modal=null;state.error='';state.message=message;render();
+}
+function detachExpense(itemId,keepEditor=false){
+ const item=R.getExpense(db,itemId);
+ if(!item.event_id)return;
+ if(!events().some(x=>x.id===item.event_id))throw Error('Evento de origem indisponível.');
+ const next=R.detach(db,itemId);
+ B.save(localStorage,next);
+ Object.assign(db,next);
+ state.message='Despesa desvinculada sem duplicar valores.';
+ if(!keepEditor)state.modal=null;
+ render();
+}
+function reuseExpense(itemId,date,eventId,occurrence){
+ const item=R.getExpense(db,itemId);
+ if(item.event_id&&!events().some(x=>x.id===item.event_id))throw Error('Evento de origem indisponível.');
+ const target=eventId?events().find(x=>x.id===eventId):null;
+ if(eventId&&!target)throw Error('Evento de destino indisponível.');
+ const targetDate=target?.date||date;
+ const next=R.copy(db,itemId,{date:targetDate,eventId:eventId||null,newId:id(),occurrenceDate:occurrence,currentUser:state.user});
+ persistExpenseChange(next,target?'Cópia vinculada ao evento '+target.title+'. Original preservado.':'Cópia independente criada. Original preservado.',targetDate);
+}
+function submitReuse(e){
+ e.preventDefault();
+ try{const f=new FormData(e.currentTarget);reuseExpense(state.modal.id,String(f.get('date')||state.day),String(f.get('event_id')||''),state.modal.occurrence);}
+ catch(err){error(err);}
+}
 function settingsForm(){
  const s=db.settings;
  return modal('Cartão e imprevistos','<form id="settings-form"><div class="field-row"><div class="field"><label>Fechamento</label><input type="number" min="1" max="31" required name="closingDay" value="'+s.closingDay+'"/></div>'+
@@ -367,7 +416,8 @@ function render(){
  state.modal?.type==='goal-details'?goalDetails(state.modal):
  state.modal?.type==='contribution'?contributionForm(state.modal):
  state.modal?.type==='settings'?settingsForm():
- state.modal?.type==='move'?moveForm(state.modal):''
+ state.modal?.type==='move'?moveForm(state.modal):
+ state.modal?.type==='reuse'?reuseForm(state.modal):''
  )+'</div>';
  bind();
 }
@@ -563,6 +613,15 @@ function bind(){
   if(action==='edit-goal')return open('goal',{id:item});
   if(action==='add-contribution')return open('contribution',{id:item});
   if(action==='edit-entry')return open('entry',{id:item,occurrence:el.dataset.occurrence||state.day});
+  if(action==='reuse-entry')return open('reuse',{id:item,occurrence:el.dataset.occurrence||state.day});
+  if(action==='detach-entry'){
+   try{detachExpense(item);}catch(err){state.error=err.message;render();}
+   return;
+  }
+  if(action==='event-detach-expense'){
+   try{captureEventDraft();detachExpense(item,true);}catch(err){error(err);}
+   return;
+  }
   if(action==='edit-event')return open('event',{id:item});
   if(action==='add-child'){const e=db.events.find(x=>x.id===item);return open('entry',{kind:'expense',eventId:item,date:e?.date||state.day})}
   if(action==='move-entry')return open('move',{kind:'entry',id:item,occurrence:el.dataset.occurrence||null});
@@ -608,7 +667,7 @@ function bind(){
  listen('#all-members',e=>{root.querySelectorAll('input[name="responsible_ids"]').forEach(i=>{if(!i.disabled)i.checked=e.target.checked})});
  for(const field of root.querySelectorAll('input[name="responsible_ids"]'))field.addEventListener('change',()=>{const all=root.querySelector('#all-members');if(all)all.checked=[...root.querySelectorAll('input[name="responsible_ids"]')].every(x=>x.checked)});
  const formBind=(name,fn)=>root.querySelector(name)?.addEventListener('submit',fn);
- formBind('#entry-form',submitEntry);formBind('#event-form',submitEvent);formBind('#event-expense-form',submitEventExpense);formBind('#goal-form',submitGoal);formBind('#contribution-form',submitContribution);formBind('#settings-form',submitSettings);
+ formBind('#reuse-form',submitReuse);formBind('#entry-form',submitEntry);formBind('#event-form',submitEvent);formBind('#event-expense-form',submitEventExpense);formBind('#goal-form',submitGoal);formBind('#contribution-form',submitContribution);formBind('#settings-form',submitSettings);
  formBind('#move-form',e=>{e.preventDefault();try{move(state.modal.kind,state.modal.id,new FormData(e.currentTarget).get('date'),false,state.modal.occurrence)}catch(err){error(err)}});
  updateEntryUI();
  for(const c of root.querySelectorAll('.albus-day[role="button"]'))c.addEventListener('keydown',e=>{if(e.target===c&&(e.key==='Enter'||e.key===' ')){e.preventDefault();state.day=c.dataset.date;render()}});
@@ -632,7 +691,7 @@ function bind(){
      gesture.active=true;source.classList.add('albus-dragging');
      if(ev.cancelable)ev.preventDefault();
      const hit=document.elementFromPoint(ev.clientX,ev.clientY);
-     const cell=hit?.closest?.('[data-drop-date]')||null;
+     const cell=hit?.closest?.('[data-drop-event],[data-drop-date]')||null;
      if(gesture.hover!==cell){
        gesture.hover?.classList.remove('drop-on');
        cell?.classList.add('drop-on');
@@ -643,11 +702,21 @@ function bind(){
      if(!gesture||gesture.pointerId!==ev.pointerId||gesture.source!==source)return;
      const current=gesture;gesture=null;
      source.classList.remove('albus-dragging');current.hover?.classList.remove('drop-on');
-     const cell=document.elementFromPoint(ev.clientX,ev.clientY)?.closest?.('[data-drop-date]');
-     if(!current.active||!cell||!cell.dataset.dropDate)return;
+     const cell=document.elementFromPoint(ev.clientX,ev.clientY)?.closest?.('[data-drop-event],[data-drop-date]');
+     if(!current.active||!cell)return;
      ev.stopPropagation();
-     try{move(current.kind,current.id,cell.dataset.dropDate,false,current.occurrence);}
-     catch(err){error(err)}
+     try{
+       if(cell.dataset.dropEvent){
+         if(current.kind!=='entry')return;
+         if(db.entries.find(x=>x.id===current.id)?.entry_type!=='expense')return;
+         reuseExpense(current.id,cell.dataset.dropDate||state.day,cell.dataset.dropEvent,current.occurrence);
+       }else if(cell.dataset.dropDate){
+         const source=db.entries.find(x=>x.id===current.id);
+         if(current.kind==='entry'&&source?.entry_type==='expense'&&source.event_id)
+           reuseExpense(current.id,cell.dataset.dropDate,null,current.occurrence);
+         else move(current.kind,current.id,cell.dataset.dropDate,false,current.occurrence);
+       }
+     }catch(err){state.error=err.message;render();}
    });
    source.addEventListener('pointercancel',()=>{
      if(gesture?.source===source){gesture.hover?.classList.remove('drop-on');source.classList.remove('albus-dragging');gesture=null;}
