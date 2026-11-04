@@ -31,8 +31,8 @@ test('novembro paga despesas de outubro sem duplicar novembro',()=>{
   assert.equal(summary.previousCard,420000);
   assert.equal(summary.newPurchases,308000);
   assert.equal(summary.futureCard,300000);
-  assert.equal(summary.provision,42800);
-  assert.equal(summary.valueToAssign,329200);
+  assert.equal(summary.provision,800);
+  assert.equal(summary.valueToAssign,371200);
 });
 test('evento move todas despesas vinculadas com deslocamento igual',()=>{
   const data={events:[{id:'evt',date:'2026-11-14'}],entries:[
@@ -57,6 +57,13 @@ test('valor de dinheiro real não soma a fatura duas vezes',()=>{
   assert.equal(s.expense,30000);
   assert.equal(s.newPurchases,0);
   assert.equal(s.income,50000);
+});
+test('fatura de compras de meses anteriores não infla provisão de imprevistos',()=>{
+  const entries=[expense('oct','2026-10-14',420000),expense('pix','2026-11-20',8000,'pix')];
+  const s=E.monthSummary(entries,[],'2026-11',settings);
+  assert.equal(s.variable,8000);
+  assert.equal(s.variation,800);
+  assert.equal(s.provision,800);
 });
 test('despesas pagas são fixas para a faixa de variação',()=>{
   const entries=[{...expense('pago','2026-11-11',10000,'pix'),status:'paid'},expense('aberto','2026-11-12',20000,'pix')];
