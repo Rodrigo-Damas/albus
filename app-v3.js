@@ -83,10 +83,11 @@ function dashboardCards(){
  ['Pagamentos previstos',s.expense,'Pagos: '+mny(s.paid),'expense'],
  ['Reservas e imprevistos',s.reserve+s.provision,'Provisão: '+mny(s.provision),'reserve'],
  [balance<0?'Déficit a cobrir':balance===0?'Orçamento distribuído':'Valor a destinar',balance,
-  balance<0?'Faltam recursos para o mês':balance===0?'Planejamento equilibrado':'Disponível para distribuir','balance']
+  balance<0?'Receitas insuficientes para cobrir as saídas previstas':balance===0?'Planejamento equilibrado':'Disponível para distribuir','balance']
  ];
  const paid=cashSources(E.occurrencesForMonth(entries(),db.overrides,state.month,db.settings,'cash'),state.month);
- return '<section class="albus-summary albus-compact-summary">'+data.map(x=>'<article class="summary-card '+x[3]+(x[3]==='balance'&&x[1]===0?' zero':'')+(x[3]==='balance'&&x[1]<0?' negative':'')+'"><div class="summary-kicker">'+esc(x[0])+'</div><div class="summary-value">'+mny(x[1])+'</div><div class="summary-meta">'+esc(x[2])+'</div></article>').join('')+'</section>'+
+ return '<section class="albus-summary albus-compact-summary">'+data.map(x=>'<article class="summary-card '+x[3]+(x[3]==='balance'&&x[1]===0?' zero':'')+(x[3]==='balance'&&x[1]<0?' negative':'')+'"><div class="summary-kicker">'+esc(x[0])+'</div><div class="summary-value">'+mny(x[1])+'</div><div class="summary-meta">'+esc(x[2])+'</div>'+
+ (x[3]==='balance'&&x[1]<0?'<div class="albus-deficit-message" role="status">As despesas, reservas e imprevistos previstos superaram as receitas do mês.</div>':'')+'</article>').join('')+'</section>'+
  '<section class="albus-month-origin"><div class="albus-origin-heading"><strong>Origem dos pagamentos em '+esc(m)+'</strong><span>Faturas de compras anteriores vencem agora, sem duplicar o gasto.</span></div>'+
  cashBreakdown(paid,'do mês')+'</section>';
 }
