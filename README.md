@@ -65,3 +65,23 @@ O campo título oferece sugestões opcionais de acordo com a categoria: salário
 ### Testes adicionais
 
 `node --test tests/access-model.test.cjs` valida membros, responsáveis compartilhados, filtros individuais, migração de itens anteriores e restrições locais de propriedade. O teste de renderização também verificou o filtro do usuário e a ausência da despesa privada da Danelle no painel inicial simulado do Rodrigo.
+
+## Albus v3 — calendário primeiro e caixinhas (04/11/2026)
+
+A PR #3 agora ativa `app-v3.js` e `goals.js` a partir de `index.html`; os arquivos anteriores permanecem para facilitar comparação/reversão durante a revisão.
+
+**Fluxo de criação:** botão único `Criar` no cabeçalho do calendário com Evento, Despesa, Receita, Objetivo (caixinha) e Tarefa. O cadastro usa a data do calendário selecionada, com texto correspondente ao tipo: compra, recebimento, aporte ou tarefa.
+
+**Layout:** indicadores compactos no topo, objetivos abaixo, e três regiões principais: filtros verticais à esquerda, calendário central e detalhamento do dia à direita. Removidos os botões duplicados de criação no topo e no painel lateral. Mantido o arrastar e soltar com alternativa de menu para mover.
+
+**Participantes e visibilidade:** Rodrigo e Danelle, múltiplos participantes, opção Selecionar todos e visibilidade familiar por padrão. Privacidade individual continua sendo simulação local, não autenticação verdadeira.
+
+**Recorrência:** mensal em dia fixo ou no N-ésimo dia útil, com opção de contar sábado (convenção de pagamento de salários). O cálculo usa feriados nacionais fixos e é estimado: não incorpora automaticamente feriados móveis, locais e pontos facultativos. Edição de uma única ocorrência mantém a série e salva a alteração em `overrides`.
+
+**Objetivos:** cadastro de caixinhas com nome, meta, saldo real inicial, aporte mensal pretendido, % de CDI e taxa anual manual opcional. Saldo real inclui aportes avulsos confirmados e confirmações de ocorrências recorrentes. Aporte planejado afeta o orçamento somente quando é cadastrado como lançamento de reserva, não apenas ao informar um número na meta. Projeções de saldo/meta são separadas dos valores realizados; não incluem impostos, taxas ou mudanças futuras de rendimento. O cadastro da meta **não gera automaticamente um aporte no calendário**: para planejar um aporte mensal, use Registrar aporte e marque Repetir mensalmente.
+
+**CDI:** consulta tentativa ao indicador diário SGS 12 do Banco Central, uma vez por dia, armazenando data e taxa em cache. O valor anual é aproximado a partir de 252 dias úteis, sem garantia de retorno. Caso a consulta falhe (inclusive por restrições do navegador), a projeção usa o último cache disponível ou taxa anual manual informada.
+
+**Segurança e dados:** mantém `albus-calendar-local-v1` e os cadastros anteriores. Não há autenticação, sincronização real, backup, gerenciamento de cartões múltiplos nem conciliação bancária. A PR não foi incorporada à `main`.
+
+**Testes:** arquivos `tests/engine.test.cjs`, `tests/access-model.test.cjs`, `tests/goals-flow.test.cjs`. Inspeção de sintaxe e renderização inicial concluída; interações de formulários e movimento entre dias precisam ser testadas manualmente no preview.
