@@ -47,7 +47,7 @@ function createMenu(){
  .map(([type,label,desc])=>'<button data-action="create" data-kind="'+type+'"><strong>'+label+'</strong><small>'+desc+'</small></button>').join('')+'</div>':'')+'</div>';
 }
 function showGoalCard(g){
- const f=G.forecast(g,db.entries,state.cdi,state.month),percent=Math.min(100,Math.max(0,f.progress));
+ const f=G.forecast(g,db.entries,state.cdi,state.month,db.overrides),percent=Math.min(100,Math.max(0,f.progress));
  return '<button class="albus-goal-card" data-action="goal-details" data-id="'+esc(g.id)+'"><span class="albus-goal-label">◈ '+esc(g.title)+'</span>'+
  '<strong>'+mny(f.actual)+'</strong><span class="albus-goal-hint">de '+mny(f.target)+' · '+Math.round(percent)+'%</span>'+
  '<span class="albus-progress"><span style="width:'+percent+'%"></span></span><small>Aporte: '+mny(f.monthly)+'/mês</small></button>';
@@ -103,7 +103,7 @@ function row(x,child=false){
  return '<div class="albus-row" draggable="true" data-drag-kind="entry" data-drag-id="'+esc(x.id)+'"><span class="albus-grip">⠿</span>'+
  '<span class="text"><b>'+esc(x.title)+'</b><div class="caption">'+esc(desc)+'</div></span>'+
  (x.entry_type==='task'?'':'<span class="albus-entry-price '+(x.entry_type==='income'?'in':'')+'">'+mny(x.amount_cents)+'</span>')+
- button('✎','edit-entry','data-id="'+esc(x.id)+'"','albus-tiny-button ghost')+
+ button('✎','edit-entry','data-id="'+esc(x.id)+'" data-occurrence="'+esc(x.occurrence_date||x.entry_date)+'"','albus-tiny-button ghost')+
  button('↔','move-entry','data-id="'+esc(x.id)+'"','albus-tiny-button ghost')+'</div>';
 }
 function details(){
@@ -141,7 +141,7 @@ function entryForm(m){
  '<div class="field"><label>Recorrência</label><select id="entry-frequency" name="frequency">'+options([['none','Não repetir'],['monthly','Mensal em dia fixo'],['business_day_monthly','Dia útil do mês']],old?.frequency||'none')+'</select></div>'+
  '<div id="business-extra" class="field-row"><div class="field"><label>Qual dia útil?</label><input name="business_day_number" type="number" min="1" max="25" value="'+(old?.business_day_number||5)+'"/></div>'+
  '<div class="field"><label>Sábado conta?</label><select name="include_saturday">'+options([['yes','Sim (salário CLT)'],['no','Não']],old?.include_saturday===false?'no':'yes')+'</select></div></div>'+
- '<p class="albus-small">O cálculo de dias úteis é estimado: feriados estaduais, municipais e móveis podem exigir correção.</p>'+
+ '<p class="albus-small">O cálculo de dias úteis é estimado: feriados estaduais, municipais e móveis podem exigir correção.</p>'+ (old?.frequency&&old.frequency!=='none'?'<div class="field"><label>Aplicar edição</label><select name="scope"><option value="occurrence">Somente a ocorrência '+fmt(m.occurrence||state.day)+'</option><option value="series">Toda a série recorrente</option></select></div>':'')+
  ownerInputs(old)+
  '<div class="field"><label>Observações</label><textarea name="notes" maxlength="1000">'+esc(old?.notes||'')+'</textarea></div>'+
  '<div class="form-footer">'+(old?button('Excluir','delete-entry','data-id="'+esc(old.id)+'"','text-button danger'):'<span></span>')+
@@ -256,7 +256,12 @@ function submitEntry(ev){
  const value={...ownership,title,entry_date:date,entry_type:type,amount_cents:amount,frequency,business_day_number:n,include_saturday:f.get('include_saturday')!=='no',
  status,category:String(f.get('category')||'Outros'),payment_method:method,event_id:eventId||null,goal_id:goalId||null,
  variable:type==='expense'&&f.has('variable'),notes:String(f.get('notes')||'').slice(0,1000)};
- if(old)Object.assign(old,value);else db.entries.push({id:id(),...value});
+ if(old&&old.frequency!=='none'&&f.get('scope')==='occurrence'){
+   const occurrence=state.modal.occurrence||state.day;
+   const override={entry_id:old.id,occurrence_date:occurrence,title,amount_cents:amount,status,category:value.category,notes:value.notes,deleted:false};
+   const index=db.overrides.findIndex(x=>x.entry_id===old.id&&x.occurrence_date===occurrence);
+   if(index===-1)db.overrides.push(override);else db.overrides[index]={...db.overrides[index],...override};
+ }else if(old)Object.assign(old,value);else db.entries.push({id:id(),...value});
  state.month=E.monthOf(date);state.day=date;state.modal=null;state.message='Lançamento salvo.';safe();render();
  }catch(e){error(e)}
 }
@@ -346,7 +351,7 @@ function bind(){
   if(action==='goal-details')return open('goal-details',{id:item});
   if(action==='edit-goal')return open('goal',{id:item});
   if(action==='add-contribution')return open('contribution',{id:item});
-  if(action==='edit-entry')return open('entry',{id:item});
+  if(action==='edit-entry')return open('entry',{id:item,occurrence:el.dataset.occurrence||state.day});
   if(action==='edit-event')return open('event',{id:item});
   if(action==='add-child'){const e=db.events.find(x=>x.id===item);return open('entry',{kind:'expense',eventId:item,date:e?.date||state.day})}
   if(action==='move-entry')return open('move',{kind:'entry',id:item});
