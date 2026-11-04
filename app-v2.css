@@ -153,3 +153,87 @@
  .albus-day-actions {grid-template-columns:1fr 1fr;}
  .albus-day-actions > :last-child {grid-column:1/-1;}
 }
+
+/* Layout calendário primeiro e fluxo único de criação: revisão visual PR 3 */
+.albus-main {max-width:1680px;padding:20px clamp(13px,2.4vw,35px) 42px;}
+.albus-compact-head {margin-bottom:11px;}
+.albus-compact-head h1 {font-size:23px;margin:3px 0}
+.albus-compact-summary {margin:9px 0 13px;grid-template-columns:repeat(4,minmax(0,1fr));}
+.albus-compact-summary .summary-card {padding:13px 15px;min-height:93px;overflow:hidden;}
+.albus-compact-summary .summary-kicker {font-size:10px;max-width:100%;padding-right:23px;}
+.albus-compact-summary .summary-value {font-size:20px;line-height:1.4;margin:5px 0;}
+.albus-compact-summary .summary-meta {font-size:10px;}
+.albus-dashboard-three {display:grid;grid-template-columns:minmax(185px,220px) minmax(475px,1fr) minmax(300px,355px);align-items:start;gap:13px;}
+.albus-filter-panel {padding:19px 15px;position:sticky;top:12px;min-width:0;}
+.albus-filter-panel>strong {display:block;margin-bottom:19px;color:#435070;font-size:13px;}
+.albus-filter-field {display:flex;flex-direction:column;gap:6px;margin-bottom:19px;}
+.albus-filter-field label {font-size:10px;color:#8590a4;font-weight:800;}
+.albus-filter-field select {width:100%;min-width:0;border:1px solid #e3e7f1;border-radius:9px;background:white;color:#495570;font-size:12px;padding:10px 8px;}
+.albus-filter-panel .outline-button {padding:9px 7px;font-size:11px;line-height:1.3;white-space:normal;}
+.albus-side-tip {margin-top:26px;border-top:1px solid #eef0f6;padding-top:16px;font-size:11px;line-height:1.7;color:#8691a6;}
+.albus-dashboard-three .calendar {padding:17px 14px;}
+.albus-dashboard-three .details {min-height:420px;padding:17px 14px;}
+.albus-dashboard-three .albus-day {min-height:87px;}
+.albus-dashboard-three .albus-date-grid {gap:4px;}
+.albus-month {gap:9px;align-items:center;}
+.albus-month h2 {font-size:18px;}
+.albus-month-actions {display:flex;align-items:center;gap:7px;flex-shrink:0;}
+.albus-month-actions .icon-button {width:29px;height:32px;display:grid;place-items:center;padding:0;font-size:22px;}
+.albus-create-anchor {position:relative;}
+.albus-create-button {padding:9px 14px;font-size:12px;min-width:90px;}
+.albus-create-menu {position:absolute;top:calc(100% + 7px);right:0;min-width:244px;padding:6px;border:1px solid #e8eaf4;background:white;box-shadow:0 15px 45px rgba(35,46,79,.16);z-index:10;border-radius:13px;display:flex;flex-direction:column;gap:2px;}
+.albus-create-menu button {border:0;border-radius:9px;text-align:left;background:transparent;color:#2e3851;padding:10px 12px;display:flex;flex-direction:column;gap:2px;}
+.albus-create-menu button:hover {background:#f2f4ff;}
+.albus-create-menu button strong {font-size:12px;}
+.albus-create-menu button small {font-size:10px;color:#9aa4b7;}
+.albus-goals {border:1px solid #eaecf4;background:white;border-radius:14px;box-shadow:var(--shadow);padding:12px 15px 11px;margin-bottom:13px;}
+.albus-goals-head {display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:11px;}
+.albus-goals-head>div {display:flex;align-items:baseline;gap:11px;flex-wrap:wrap;}
+.albus-goals-head strong {font-family:Manrope,sans-serif;font-size:13px;color:#34415e;}
+.albus-goals-head span {color:#9ba5b7;font-size:11px;}
+.albus-goals-grid {display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;}
+.albus-goal-card {padding:11px 13px;border:1px solid #eceef7;background:#fafbff;border-radius:11px;text-align:left;display:flex;flex-direction:column;gap:5px;min-width:0;}
+.albus-goal-card:hover {background:#f4f6ff;border-color:#bdc4ee;}
+.albus-goal-card strong {color:#253153;font-size:17px;}
+.albus-goal-label {font-size:11px;font-weight:800;color:#6672af;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.albus-goal-hint,.albus-goal-card small {color:#8692aa;font-size:10px;}
+.albus-progress {display:block;background:#e8eaf3;height:7px;border-radius:12px;overflow:hidden;width:100%;margin:3px 0 4px;}
+.albus-progress span {display:block;height:100%;background:#6570d6;border-radius:12px;}
+.albus-goal-placeholder {display:flex;align-items:center;justify-content:center;border:1px dashed #c9cdeb;border-radius:11px;padding:12px;color:#707bb7;font-size:12px;background:#fafbff;text-align:left;min-height:57px;}
+.albus-cdi-meta {font-size:10px;color:#9aa5b8;margin-top:9px;line-height:1.5;}
+.albus-goal-modal-total {display:flex;flex-direction:column;align-items:flex-start;gap:5px;padding:14px 0;}
+.albus-goal-modal-total span,.albus-goal-modal-total small {font-size:11px;color:#929eb1;}
+.albus-goal-modal-total strong {font-size:28px;color:#323e63;}
+.albus-goal-stats {font-size:12px;color:#68748b;padding:12px 0;line-height:1.6;}
+.albus-select-all {display:flex;align-items:center;gap:8px;font-size:11px;color:#6d79a4;padding:10px 0 5px;}
+.albus-select-all input {width:auto!important;accent-color:#6470d5;}
+.albus-suggestions {display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:8px;}
+.albus-suggestions button {border:1px solid #e4e8f6;background:#f7f8ff;border-radius:18px;color:#6975a7;font-size:10px;padding:6px 8px;}
+.albus-modal .field-row {display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.albus-filter-panel .outline-button.wide {width:100%;}
+@media(max-width:1250px){
+ .albus-dashboard-three {grid-template-columns:185px minmax(375px,1fr) minmax(255px,300px);gap:10px;}
+ .albus-dashboard-three .albus-day {min-height:78px;padding:5px 4px;}
+ .albus-month h2 {font-size:16px;}
+ .albus-month-actions {gap:3px;}
+ .albus-create-button {padding:8px 9px;}
+}
+@media(max-width:1020px){
+ .albus-dashboard-three {grid-template-columns:190px minmax(0,1fr);}
+ .albus-dashboard-three .details {grid-column:2;position:static;}
+ .albus-goals-grid {grid-template-columns:repeat(3,minmax(0,1fr));}
+}
+@media(max-width:690px){
+ .albus-main {padding:15px 11px 40px;}
+ .albus-dashboard-three {grid-template-columns:minmax(0,1fr);gap:10px;}
+ .albus-filter-panel {grid-row:2;position:static;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;padding:13px;}
+ .albus-filter-panel>strong,.albus-side-tip {grid-column:1/-1;margin:0;}
+ .albus-filter-field {margin-bottom:4px;}
+ .albus-dashboard-three .calendar {grid-row:1;}
+ .albus-dashboard-three .details {grid-column:1;grid-row:3;}
+ .albus-compact-summary {grid-template-columns:repeat(2,minmax(0,1fr));}
+ .albus-goals-grid {grid-template-columns:repeat(2,minmax(0,1fr));}
+ .albus-dashboard-three .albus-day {min-height:73px;}
+ .albus-month-actions .icon-button {width:25px;}
+ .albus-create-menu {right:-42px;min-width:215px;}
+}
