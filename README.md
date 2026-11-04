@@ -46,7 +46,7 @@ Validar visualmente o calendário e os fluxos de cadastro, edição e movimenta�
 
 ## PR 3, Bloco 1 adicional: ambiente familiar de teste
 
-A interface de desenvolvimento inclui os perfis demonstrativos **Rodrigo** e **Daniele**, identificados no cabeçalho como **Usuário em teste**, dentro do espaço **Família**. É possível alternar o usuário simulado e filtrar a visualização por todos os registros acessíveis, compartilhados ou por responsável.
+A interface de desenvolvimento inclui os perfis demonstrativos **Rodrigo** e **Danelle**, identificados no cabeçalho como **Usuário em teste**, dentro do espaço **Família**. É possível alternar o usuário simulado e filtrar a visualização por todos os registros acessíveis, compartilhados ou por responsável.
 
 Nos cadastros de eventos, receitas e despesas são persistidos os campos:
 - `workspace_id` (espaço de trabalho familiar de teste);
@@ -64,4 +64,4 @@ O campo título oferece sugestões opcionais de acordo com a categoria: salário
 
 ### Testes adicionais
 
-`node --test tests/access-model.test.cjs` valida membros, responsáveis compartilhados, filtros individuais, migração de itens anteriores e restrições locais de propriedade. O teste de renderização também verificou o filtro do usuário e a ausência da despesa privada da Daniele no painel inicial simulado do Rodrigo.
+`node --test tests/access-model.test.cjs` valida membros, responsáveis compartilhados, filtros individuais, migração de itens anteriores e restrições locais de propriedade. O teste de renderização também verificou o filtro do usuário e a ausência da despesa privada da Danelle no painel inicial simulado do Rodrigo.
