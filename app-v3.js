@@ -262,7 +262,8 @@ function submitEntry(ev){
    const index=db.overrides.findIndex(x=>x.entry_id===old.id&&x.occurrence_date===occurrence);
    if(index===-1)db.overrides.push(override);else db.overrides[index]={...db.overrides[index],...override};
  }else if(old)Object.assign(old,value);else db.entries.push({id:id(),...value});
- state.month=E.monthOf(date);state.day=date;state.modal=null;state.message='Lançamento salvo.';safe();render();
+ const selectedDate=old&&old.frequency!=='none'&&f.get('scope')==='occurrence'?(state.modal.occurrence||state.day):date;
+ state.month=E.monthOf(selectedDate);state.day=selectedDate;state.modal=null;state.message='Lançamento salvo.';safe();render();
  }catch(e){error(e)}
 }
 function submitEvent(ev){
