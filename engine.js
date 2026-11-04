@@ -47,6 +47,7 @@ const AlbusEngine = (function albusEngineFactory() {
   function paymentDate(entry,settings={}) {
     if(entry.entry_type!=='expense')return entry.occurrence_date||entry.entry_date;
     const purchase=entry.occurrence_date||entry.entry_date;
+    if(entry.payment_date_override&&dateParts(entry.payment_date_override))return entry.payment_date_override;
     if(entry.payment_method==='credit')return billingDueDate(purchase,settings);
     return entry.payment_date&&dateParts(entry.payment_date)?entry.payment_date:purchase;
   }
@@ -88,11 +89,13 @@ const AlbusEngine = (function albusEngineFactory() {
   }
   function occurrencesForMonth(entries,overrides,month,settings={},view='cash') {
     const out=[];
-    for(let offset=-3;offset<=1;offset++){
+    // Uma ocorrência reagendada pode atravessar meses; manter busca de datas próximas.
+    for(let offset=-12;offset<=12;offset++){
       const base=addMonths(month,offset);
       for(const entry of expandMonth(entries,overrides,base)){
-        const paidOn=paymentDate(entry,settings);
-        const displayDate=(entry.entry_type==='expense'&&view==='cash')?paidOn:entry.occurrence_date;
+        const effectiveOccurrence=entry.moved_to_date&&dateParts(entry.moved_to_date)?entry.moved_to_date:entry.occurrence_date;
+        const paidOn=paymentDate({...entry,occurrence_date:effectiveOccurrence},settings);
+        const displayDate=(entry.entry_type==='expense'&&view==='cash')?paidOn:effectiveOccurrence;
         if(monthOf(displayDate)===month)out.push({...entry,payment_date_effective:paidOn,display_date:displayDate});
       }
     }
@@ -117,6 +120,25 @@ const AlbusEngine = (function albusEngineFactory() {
     const futureCard=purchase.filter(x=>x.entry_type==='expense'&&x.payment_method==='credit'&&monthOf(x.payment_date_effective)>month).reduce((a,x)=>a+whole(x.amount_cents),0);
     const valueToAssign=income-expense-reserve-provision;
     return {income,expense,reserve,variable,variation,provision,received,paid,setAside,cardDue,previousCard,newPurchases,futureCard,valueToAssign,cash,purchase};
+  }
+  function moveOccurrence(data,id,sourceDate,toDate,view='purchase') {
+    if(!dateParts(sourceDate)||!dateParts(toDate))throw Error('Data inválida.');
+    const entry=(data.entries||[]).find(x=>x.id===id);
+    if(!entry)throw Error('Lançamento não encontrado.');
+    const originals=expandMonth([entry],data.overrides||[],monthOf(sourceDate));
+    if(!originals.some(x=>x.occurrence_date===sourceDate))throw Error('Ocorrência recorrente não encontrada.');
+    const key=x=>x.entry_id===id&&x.occurrence_date===sourceDate;
+    const other=(data.overrides||[]).filter(x=>!key(x));
+    const existing=(data.overrides||[]).find(key)||{};
+    const override={...existing,entry_id:id,occurrence_date:sourceDate};
+    if(view==='cash'&&entry.entry_type==='expense'&&entry.payment_method==='credit'){
+      override.payment_date_override=toDate;
+      delete override.moved_to_date;
+    }else{
+      override.moved_to_date=toDate;
+      delete override.payment_date_override;
+    }
+    return {...data,overrides:[...other,override]};
   }
   function moveItem(data,kind,id,toDate) {
     if(!dateParts(toDate))throw Error('Data de destino inválida.');
@@ -145,6 +167,6 @@ const AlbusEngine = (function albusEngineFactory() {
     if(!Number.isSafeInteger(n)||n>99999999999)throw Error('Valor acima do limite.');
     return n;
   }
-  return {dateParts,addMonths,shiftDate,dayDistance,monthOf,daysInMonth,dateInMonth,businessDate,isBrazilFixedHoliday,billingDueDate,paymentDate,expandMonth,occurrencesForMonth,monthSummary,moveItem,money,parseMoney,clamp};
+  return {dateParts,addMonths,shiftDate,dayDistance,monthOf,daysInMonth,dateInMonth,businessDate,isBrazilFixedHoliday,billingDueDate,paymentDate,expandMonth,occurrencesForMonth,monthSummary,moveItem,moveOccurrence,money,parseMoney,clamp};
 })();
 if (typeof module !== 'undefined' && module.exports) module.exports = AlbusEngine;
