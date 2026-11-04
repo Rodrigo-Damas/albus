@@ -424,3 +424,12 @@
  .albus-deficit-message {font-size:9px;}
  .albus-financial-sticky.is-stuck .albus-deficit-message {font-size:8px;}
 }
+
+/* Destinos de cópia de despesas para eventos, com indicação de arrastar e soltar. */
+.albus-event[data-drop-event]{outline-offset:-3px;transition:outline-color .15s ease,background-color .15s ease;}
+.albus-event[data-drop-event].drop-on{outline:2px solid #6371d8;background:#eef1ff;}
+.albus-event-linked-row .albus-tiny-button{flex:none;}
+.albus-row .albus-tiny-button[aria-label="Reutilizar despesa"],
+.albus-row .albus-tiny-button[aria-label="Desvincular despesa"]{font-size:13px;}
+.albus-row .albus-tiny-button[aria-label="Reutilizar despesa"]:focus-visible,
+.albus-row .albus-tiny-button[aria-label="Desvincular despesa"]:focus-visible{outline:2px solid #6371d8;outline-offset:2px;}
