@@ -421,12 +421,18 @@
       state.modal=null;state.error='';state.notice='Configurações financeiras atualizadas.';persist();render();
     }catch(err){const node=root.querySelector('.albus-modal .modal-header');if(node){let msg=root.querySelector('#form-error');if(!msg){msg=document.createElement('div');msg.id='form-error';msg.className='error';node.after(msg);}msg.textContent=err.message;}}
   }
+  let lastToday=todayISO();
   function scheduleTomorrow(){
     const now=new Date(),next=new Date(now.getFullYear(),now.getMonth(),now.getDate()+1,0,0,1);
-    setTimeout(()=>{const old=todayISO();const current=new Date();const nextToday=`${current.getFullYear()}-${String(current.getMonth()+1).padStart(2,'0')}-${String(current.getDate()).padStart(2,'0')}`;
+    setTimeout(()=>{
+      const nextToday=todayISO(),previousToday=lastToday;
+      lastToday=nextToday;
       if(!state.modal){
-        // Atualiza o destaque visual sem perder o mês que o usuário estiver consultando.
-        if(state.selected===old){state.selected=nextToday;state.month=E.monthOf(nextToday);}
+        // Atualiza a data destacada sem recarregar a página e sem mudar o mês em consulta.
+        // Se o usuário estava no dia de ontem, apenas a seleção acompanha a nova data.
+        if(state.selected===previousToday && state.month===E.monthOf(previousToday)){
+          state.selected=nextToday;state.month=E.monthOf(nextToday);
+        }
         render();
       }
       scheduleTomorrow();
