@@ -1,7 +1,7 @@
 
 (function(){
 'use strict';
-const E=AlbusEngine,A=AlbusAccess,G=AlbusGoals,M=AlbusMoneyMask;
+const E=AlbusEngine,A=AlbusAccess,G=AlbusGoals,M=AlbusMoneyMask,B=AlbusBackup;
 const KEY='albus-calendar-local-v1',root=document.getElementById('app');
 const TYPES={event:'Evento',expense:'Despesa',income:'Receita',goal:'Objetivo',task:'Tarefa',reserve:'Aporte / reserva'};
 const CATEGORIES=['Salário','Alimentação','Transporte','Saúde','Moradia','Lazer','Educação','Casa','Pessoal','Outros','Precaução'];
@@ -17,13 +17,14 @@ const fmt=d=>E.dateParts(d)?d.split('-').reverse().join('/'):'';
 const monthTitle=m=>{const [y,mo]=m.split('-').map(Number);let text=new Intl.DateTimeFormat('pt-BR',{month:'long',year:'numeric'}).format(new Date(y,mo-1,1));return text[0].toUpperCase()+text.slice(1)};
 function load(){
  let v={};try{v=JSON.parse(localStorage.getItem(KEY)||'{}')||{}}catch{}
- return {entries:(Array.isArray(v.entries)?v.entries:[]).filter(x=>E.dateParts(x.entry_date)).map(x=>A.normalizeItem(x)),
+ return {...v,entries:(Array.isArray(v.entries)?v.entries:[]).filter(x=>E.dateParts(x.entry_date)).map(x=>A.normalizeItem(x)),
  events:(Array.isArray(v.events)?v.events:[]).filter(x=>E.dateParts(x.date)).map(x=>A.normalizeItem(x)),
  goals:(Array.isArray(v.goals)?v.goals:[]).filter(x=>x.id).map(x=>A.normalizeItem(G.ensureGoal(x))),
  overrides:Array.isArray(v.overrides)?v.overrides:[],settings:{...defaults,...v.settings}};
 }
+B.ensureSnapshot(localStorage);
 const db=load(),state={user:'rodrigo',filter:'all',month:E.monthOf(today()),day:today(),modal:null,createOpen:false,cdi:null,message:'',error:''};
-const safe=()=>{try{localStorage.setItem(KEY,JSON.stringify(db));return true}catch(e){state.error='Não foi possível salvar no armazenamento local.';return false}};
+const safe=()=>{try{B.save(localStorage,db);return true}catch(e){state.error='Não foi possível salvar no armazenamento local. Exporte um backup e verifique o espaço disponível.';return false}};
 const visible=items=>A.visibleItems(items,state.user,state.filter);
 const entries=()=>visible(db.entries), events=()=>visible(db.events),goals=()=>visible(db.goals);
 const monthlyRows=(month=state.month,view=db.settings.view)=>E.occurrencesForMonth(entries(),db.overrides,month,db.settings,view);
@@ -99,10 +100,10 @@ function calendar(){
    const date=state.month+'-'+String(d).padStart(2,'0'),dayRows=rows.filter(x=>x.display_date===date);
    const ev=events().filter(x=>x.date===date),inc=dayRows.filter(x=>x.entry_type==='income').reduce((v,x)=>v+Number(x.amount_cents||0),0);
    const exp=dayRows.filter(x=>x.entry_type==='expense').reduce((v,x)=>v+Number(x.amount_cents||0),0);
-   const chips=[...ev.map(x=>({kind:'event',id:x.id,title:x.title})),...dayRows.filter(x=>x.entry_type!=='income'&&(!x.event_id||!ev.some(y=>y.id===x.event_id))).map(x=>({kind:'entry',id:x.id,title:x.title}))];
+   const chips=[...ev.map(x=>({kind:'event',id:x.id,title:x.title})),...dayRows.filter(x=>x.entry_type!=='income'&&(!x.event_id||!ev.some(y=>y.id===x.event_id))).map(x=>({kind:'entry',id:x.id,title:x.title,occurrence:x.occurrence_date}))];
    out.push('<div role="button" tabindex="0" class="albus-day '+(date===state.day?'selected ':'')+(date===today()?'today':'')+'" data-action="day" data-date="'+date+'" data-drop-date="'+date+'"><span class="albus-day-number">'+d+'</span>'+
     (inc?'<span class="albus-money in">+ '+mny(inc)+'</span>':'')+(exp?'<span class="albus-money out">− '+mny(exp)+'</span>':'')+
-    chips.slice(0,2).map(x=>'<span class="albus-chip '+x.kind+'" draggable="true" data-drag-kind="'+x.kind+'" data-drag-id="'+esc(x.id)+'">'+esc(x.title)+'</span>').join('')+
+    chips.slice(0,2).map(x=>'<span class="albus-chip '+x.kind+'" data-drag-kind="'+x.kind+'" data-drag-id="'+esc(x.id)+'" data-occurrence="'+esc(x.occurrence||'')+'" title="Arraste para reagendar">'+esc(x.title)+'</span>').join('')+
     (chips.length>2?'<span class="albus-overflow">+'+(chips.length-2)+' itens</span>':'')+'</div>');
  }
  return '<article class="surface calendar"><div class="albus-month"><div><h2>'+esc(monthTitle(state.month))+'</h2><div class="albus-small">Selecione o dia. Arraste itens para outra data.</div></div>'+
@@ -112,18 +113,18 @@ function calendar(){
 }
 function row(x,child=false){
  const due=x.entry_type==='expense'?E.paymentDate(x,db.settings):'',desc=[TYPES[x.entry_type]||'Lançamento',A.responsibleLabel(x),x.visibility==='private'?'Individual':'Família',due&&x.payment_method==='credit'?'Vence '+fmt(due):''].filter(Boolean).join(' · ');
- return '<div class="albus-row" draggable="true" data-drag-kind="entry" data-drag-id="'+esc(x.id)+'"><span class="albus-grip">⠿</span>'+
+ return '<div class="albus-row" data-drag-kind="entry" data-drag-id="'+esc(x.id)+'" data-occurrence="'+esc(x.occurrence_date||x.entry_date)+'"><span class="albus-grip albus-drag-handle" title="Segure e arraste">⠿</span>'+
  '<span class="text"><b>'+esc(x.title)+'</b><div class="caption">'+esc(desc)+'</div></span>'+
  (x.entry_type==='task'?'':'<span class="albus-entry-price '+(x.entry_type==='income'?'in':'')+'">'+mny(x.amount_cents)+'</span>')+
  button('✎','edit-entry','data-id="'+esc(x.id)+'" data-occurrence="'+esc(x.occurrence_date||x.entry_date)+'"','albus-tiny-button ghost')+
- button('↔','move-entry','data-id="'+esc(x.id)+'"','albus-tiny-button ghost')+'</div>';
+ button('↔','move-entry','data-id="'+esc(x.id)+'" data-occurrence="'+esc(x.occurrence_date||x.entry_date)+'"','albus-tiny-button ghost')+'</div>';
 }
 function details(){
  const day=state.day,ev=events().filter(x=>x.date===day),entriesAt=monthlyRows().filter(x=>x.display_date===day),linked=new Set(ev.map(x=>x.id));
  const others=entriesAt.filter(x=>!linked.has(x.event_id));
  let eventHTML=ev.map(x=>{
    const children=entries().filter(y=>y.event_id===x.id);
-   return '<div class="albus-event" draggable="true" data-drag-kind="event" data-drag-id="'+esc(x.id)+'"><div class="albus-event-header"><span class="albus-grip">⠿</span><strong class="albus-event-title">'+esc(x.title)+'</strong>'+
+   return '<div class="albus-event" data-drag-kind="event" data-drag-id="'+esc(x.id)+'"><div class="albus-event-header"><span class="albus-grip albus-drag-handle" title="Segure e arraste">⠿</span><strong class="albus-event-title">'+esc(x.title)+'</strong>'+
    button('✎','edit-event','data-id="'+esc(x.id)+'"','albus-tiny-button ghost')+
    button('↔','move-event','data-id="'+esc(x.id)+'"','albus-tiny-button ghost')+'</div><div class="albus-small">Participantes: '+esc(A.responsibleLabel(x))+'</div>'+
    children.map(y=>row(y,true)).join('')+button('+ Despesa vinculada','add-child','data-id="'+esc(x.id)+'"','albus-tiny-button')+'</div>';
@@ -214,17 +215,17 @@ function settingsForm(){
 function moveForm(m){
  const x=m.kind==='event'?db.events.find(x=>x.id===m.id):db.entries.find(x=>x.id===m.id);
  return modal('Mover '+(m.kind==='event'?'evento':'lançamento'),'<form id="move-form"><div class="field"><label>Nova data</label><input name="date" type="date" required value="'+(x?.date||x?.entry_date||state.day)+'"/></div>'+
- '<p class="albus-small">Mover evento desloca todas as suas despesas vinculadas. Mover lançamento altera somente esse lançamento.</p>'+
+ '<p class="albus-small">Mover um evento desloca suas despesas vinculadas. Mover um lançamento recorrente altera somente a ocorrência selecionada. Arrastar um pagamento do cartão altera o vencimento previsto, sem mudar a data da compra.</p>'+
  '<div class="form-footer">'+button('Cancelar','close','','secondary-button')+' <button type="submit" class="primary-button">Mover</button></div></form>');
 }
 function render(){
  const s=summary();
  root.innerHTML='<div class="albus-shell"><header class="albus-top"><div class="albus-brand"><span class="brand-icon">♥</span>albus<span class="brand-dot">.</span></div>'+
- '<div class="albus-top-center">Calendário e planejamento da família</div><div class="albus-top-right">Perfil de teste <select id="demo-user">'+
+ '<div class="albus-top-center">Calendário e planejamento da família</div><div class="albus-top-right"><button type="button" class="albus-backup-button" data-action="export-backup" title="Baixar cópia dos cadastros deste navegador">↓ Backup</button><button type="button" class="albus-backup-button" data-action="import-backup" title="Importar sem sobrescrever lançamentos">↑ Importar</button><input id="backup-file" type="file" accept="application/json,.json" hidden/> Perfil de teste <select id="demo-user">'+
  options(MEMBER.map(x=>[x.id,x.name]),state.user)+'</select><span class="albus-family-pill">Família</span></div></header>'+
  '<main class="albus-main"><div class="albus-title-row albus-compact-head"><div><div class="albus-eyebrow">CALENDÁRIO · '+esc(monthTitle(state.month))+'</div>'+
  '<h1>Seu calendário.</h1></div></div>'+
- '<div class="albus-note">Ambiente de testes: Rodrigo e Danielle são perfis simulados. Os dados ainda ficam neste navegador, sem login real ou sincronização.</div>'+
+ '<div class="albus-note">Ambiente de testes: Rodrigo e Danielle são perfis simulados. Os dados ficam neste navegador e neste endereço. <b>Para protegê-los, use ↓ Backup antes de testar mudanças importantes.</b> Não há sincronização entre links diferentes.</div>'+
  (state.error?'<div class="error">'+esc(state.error)+'</div>':'')+(state.message?'<div class="success">'+esc(state.message)+'</div>':'')+
  dashboardCards()+goalCards()+
  '<section class="albus-dashboard albus-dashboard-three">'+filters()+calendar()+details()+'</section>'+
@@ -320,14 +321,25 @@ function submitSettings(ev){
  next.provisionFixedCents=E.parseMoney(f.get('provisionFixed'));next.cardConfigured=true;Object.assign(db.settings,next);state.modal=null;safe();render();
  }catch(e){error(e)}
 }
-function move(kind,itemId,to,silent=false){
+function move(kind,itemId,to,silent=false,occurrence=null){
  if(!E.dateParts(to))throw Error('Data inválida.');
  const target=kind==='event'?db.events.find(x=>x.id===itemId):db.entries.find(x=>x.id===itemId);
  if(!target)return false;
  if(kind==='event'&&db.entries.some(x=>x.event_id===itemId&&['paid','received','set_aside'].includes(x.status))&&!confirm('O evento possui despesas já efetivadas. Alterar datas históricas?'))return false;
  if(kind==='entry'&&['paid','received','set_aside'].includes(target.status)&&!confirm('Este lançamento foi efetivado. Alterar sua data histórica?'))return false;
- const next=E.moveItem(db,kind,itemId,to);db.entries=next.entries;db.events=next.events;state.day=to;state.month=E.monthOf(to);
- if(!silent){state.modal=null;state.message='Data atualizada.';safe();render();}
+ let next;
+ if(kind==='entry'&&target.frequency&&target.frequency!=='none'){
+   const source=occurrence||state.day;
+   next=E.moveOccurrence(db,itemId,source,to,db.settings.view);
+ }else if(kind==='entry'&&target.entry_type==='expense'&&target.payment_method==='credit'&&db.settings.view==='cash'){
+   next={...db,entries:db.entries.map(x=>x.id===itemId?{...x,payment_date_override:to}:x)};
+ }else next=E.moveItem(db,kind,itemId,to);
+ // Persistir antes de substituir os objetos visíveis em memória; se falhar, nada muda.
+ const previous={entries:db.entries,events:db.events,overrides:db.overrides};
+ db.entries=next.entries;db.events=next.events;db.overrides=next.overrides||db.overrides;
+ if(!safe()){Object.assign(db,previous);if(!silent)render();return false;}
+ state.day=to;state.month=E.monthOf(to);
+ if(!silent){state.modal=null;state.message='Item movido para '+fmt(to)+'.';render();}
  return true;
 }
 function statusOptions(type){
@@ -368,7 +380,7 @@ function bind(){
   if(action==='edit-entry')return open('entry',{id:item,occurrence:el.dataset.occurrence||state.day});
   if(action==='edit-event')return open('event',{id:item});
   if(action==='add-child'){const e=db.events.find(x=>x.id===item);return open('entry',{kind:'expense',eventId:item,date:e?.date||state.day})}
-  if(action==='move-entry')return open('move',{kind:'entry',id:item});
+  if(action==='move-entry')return open('move',{kind:'entry',id:item,occurrence:el.dataset.occurrence||null});
   if(action==='move-event')return open('move',{kind:'event',id:item});
   if(action==='delete-entry'||action==='delete-event'){
     const table=action==='delete-event'?'events':'entries';if(!confirm('Excluir este item?'))return;
@@ -382,6 +394,25 @@ function bind(){
  }));
  root.querySelectorAll('input[data-money="true"]').forEach(M.bind);
  const listen=(id,fn)=>root.querySelector(id)?.addEventListener('change',fn);
+ root.querySelector('[data-action="export-backup"]')?.addEventListener('click',()=>{
+   try{B.download(localStorage,location.origin);}catch(err){state.error='Falha ao exportar: '+err.message;render();}
+ });
+ root.querySelector('[data-action="import-backup"]')?.addEventListener('click',()=>root.querySelector('#backup-file')?.click());
+ root.querySelector('#backup-file')?.addEventListener('change',async ev=>{
+   const file=ev.target.files?.[0];
+   if(!file)return;
+   try{
+     if(file.size>20*1024*1024)throw Error('Backup muito grande (limite 20 MB).');
+     const source=await file.text();
+     const current=B.parseStored(localStorage.getItem(KEY));
+     const merged=B.merge(current,source);
+     const added=Object.values(merged.counts).reduce((sum,v)=>sum+v.added,0);
+     if(!added){state.message='Todos os itens desse backup já estavam cadastrados.';render();return;}
+     if(!confirm('Importar '+added+' itens adicionais? Nenhum item existente será sobrescrito.'))return;
+     B.save(localStorage,merged.data);
+     location.reload();
+   }catch(err){state.error='Não foi possível importar: '+err.message;render();}
+ });
  listen('#demo-user',e=>{state.user=e.target.value;state.filter='all';render()});
  listen('#owner-filter',e=>{state.filter=e.target.value;render()});
  listen('#payment-profile',e=>{db.settings.profile=e.target.value;safe();if(db.settings.profile==='credit'&&!db.settings.cardConfigured)return open('settings');render()});
@@ -392,11 +423,49 @@ function bind(){
  for(const field of root.querySelectorAll('input[name="responsible_ids"]'))field.addEventListener('change',()=>{const all=root.querySelector('#all-members');if(all)all.checked=[...root.querySelectorAll('input[name="responsible_ids"]')].every(x=>x.checked)});
  const formBind=(name,fn)=>root.querySelector(name)?.addEventListener('submit',fn);
  formBind('#entry-form',submitEntry);formBind('#event-form',submitEvent);formBind('#goal-form',submitGoal);formBind('#contribution-form',submitContribution);formBind('#settings-form',submitSettings);
- formBind('#move-form',e=>{e.preventDefault();try{move(state.modal.kind,state.modal.id,new FormData(e.currentTarget).get('date'))}catch(err){error(err)}});
+ formBind('#move-form',e=>{e.preventDefault();try{move(state.modal.kind,state.modal.id,new FormData(e.currentTarget).get('date'),false,state.modal.occurrence)}catch(err){error(err)}});
  updateEntryUI();
  for(const c of root.querySelectorAll('.albus-day[role="button"]'))c.addEventListener('keydown',e=>{if(e.target===c&&(e.key==='Enter'||e.key===' ')){e.preventDefault();state.day=c.dataset.date;render()}});
- root.querySelectorAll('[data-drag-kind]').forEach(el=>el.addEventListener('dragstart',e=>{e.stopPropagation();e.dataTransfer.setData('text/plain',JSON.stringify({kind:el.dataset.dragKind,id:el.dataset.dragId}));e.dataTransfer.effectAllowed='move'}));
- root.querySelectorAll('[data-drop-date]').forEach(el=>{el.addEventListener('dragover',e=>{e.preventDefault();el.classList.add('drop-on')});el.addEventListener('dragleave',()=>el.classList.remove('drop-on'));el.addEventListener('drop',e=>{e.preventDefault();e.stopPropagation();el.classList.remove('drop-on');try{let x=JSON.parse(e.dataTransfer.getData('text/plain'));if(['entry','event'].includes(x.kind))move(x.kind,x.id,el.dataset.dropDate)}catch(err){error(err)}})});
+ // Delegação por Pointer Events: funciona com mouse, toque e caneta.
+ // Não depende do drag-and-drop HTML nativo, que falha em navegadores móveis.
+ let gesture=null;
+ const isInteractive=el=>!!el.closest('button,input,select,textarea,a,[role="button"]');
+ root.querySelectorAll('[data-drag-kind]').forEach(source=>{
+   source.addEventListener('pointerdown',ev=>{
+     if(ev.button!==0||isInteractive(ev.target))return;
+     const target=ev.target.closest('[data-drag-kind]');if(target!==source)return;
+     gesture={pointerId:ev.pointerId,kind:source.dataset.dragKind,id:source.dataset.dragId,
+       occurrence:source.dataset.occurrence||null,startX:ev.clientX,startY:ev.clientY,active:false,source,hover:null};
+     try{source.setPointerCapture(ev.pointerId)}catch{}
+   });
+   source.addEventListener('pointermove',ev=>{
+     if(!gesture||gesture.pointerId!==ev.pointerId||gesture.source!==source)return;
+     const distance=Math.hypot(ev.clientX-gesture.startX,ev.clientY-gesture.startY);
+     if(!gesture.active&&distance<7)return;
+     gesture.active=true;source.classList.add('albus-dragging');
+     if(ev.cancelable)ev.preventDefault();
+     const hit=document.elementFromPoint(ev.clientX,ev.clientY);
+     const cell=hit?.closest?.('[data-drop-date]')||null;
+     if(gesture.hover!==cell){
+       gesture.hover?.classList.remove('drop-on');
+       cell?.classList.add('drop-on');
+       gesture.hover=cell;
+     }
+   });
+   source.addEventListener('pointerup',ev=>{
+     if(!gesture||gesture.pointerId!==ev.pointerId||gesture.source!==source)return;
+     const current=gesture;gesture=null;
+     source.classList.remove('albus-dragging');current.hover?.classList.remove('drop-on');
+     const cell=document.elementFromPoint(ev.clientX,ev.clientY)?.closest?.('[data-drop-date]');
+     if(!current.active||!cell||!cell.dataset.dropDate)return;
+     ev.stopPropagation();
+     try{move(current.kind,current.id,cell.dataset.dropDate,false,current.occurrence);}
+     catch(err){error(err)}
+   });
+   source.addEventListener('pointercancel',()=>{
+     if(gesture?.source===source){gesture.hover?.classList.remove('drop-on');source.classList.remove('albus-dragging');gesture=null;}
+   });
+ });
  // Clicking outside a form does not dismiss it.
 }
 let dayBefore=today();
