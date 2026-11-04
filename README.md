@@ -125,3 +125,21 @@ O quadro de **Receitas**, **Pagamentos previstos**, **Reservas e imprevistos** e
 Ao fixar, o resumo reduz o espaçamento e oculta a descrição auxiliar dos cards, preservando os números. O comportamento é adaptado para larguras menores. Valores de receita são verdes; pagamentos, vermelhos; reservas/imprevistos, azuis; valor a destinar, vermelho, com zero equilibrado em verde. O saldo negativo exibe o sinal de menos em vez de valor absoluto, com descrição de déficit.
 
 Alteração somente de layout e apresentação: **não modifica o formato, as chaves de armazenamento nem os cálculos financeiros**. Arquivo de validação: `tests/sticky-summary.test.cjs`. Ainda é recomendada uma revisão visual em telas móveis pequenas, nas quais a faixa ocupa mais altura.
+
+## Reutilização e desvinculação de despesas (04/11/2026)
+
+A ordem do menu **Criar** passou a ser **Despesa → Receita → Evento → Objetivo → Tarefa**. O tipo de lançamento antes chamado “Aporte / reserva” agora aparece como **Reserva ou investimento**, sem mudança da chave interna `reserve`.
+
+**Despesas vinculadas a eventos** podem ser reutilizadas sem apagar ou mover a original:
+
+- Arrastar uma despesa vinculada para um **dia** cria uma **nova cópia independente** naquela data. O lançamento original permanece no evento.
+- Arrastar uma despesa para o **cartão de outro evento** no detalhamento do dia cria uma **nova cópia vinculada ao evento de destino**, preservando a original e usando a data do evento de destino.
+- O botão **⧉ Reutilizar** oferece a mesma operação sem arrastar: selecione “Despesa independente” ou o evento de destino. É possível repetir a cópia quantas vezes desejar.
+- O botão **↗ Desvincular** remove o vínculo de uma despesa existente e a mantém como despesa independente, sem duplicar valores; também está no editor do evento.
+- Ao copiar, sempre é gerado um identificador novo. A cópia é **um novo gasto planejado**, com valor/categoria/método herdados e pagamento do cartão recalculado pela nova data. Ela não herda status pago nem vencimento manual da original. Cópias não se tornam recorrentes automaticamente.
+- Ao **mover um evento inteiro**, permanece a regra atual de reagendar suas despesas vinculadas; copiar uma despesa isolada não move o evento nem elimina a despesa de origem.
+- A ação só pode usar eventos visíveis para o perfil simulado. O armazenamento original `albus-calendar-local-v1` e seus backups permanecem inalterados; gravação da cópia/desvinculação acontece em operação única antes de atualizar a memória da interface.
+
+**Atenção:** a cópia é contabilizada como uma despesa adicional. Não se trata apenas de um vínculo visual que reutiliza o mesmo pagamento. Em caso de gasto único compartilhado por dois eventos, o usuário deve evitar copiar para não duplicar financeiramente.
+
+Testes: `tests/expense-reuse.test.cjs`, mais verificação isolada do arrastar para um dia. A PR segue aberta, sem merge.
