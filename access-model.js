@@ -3,7 +3,7 @@
 (function (scope) {
   const DEFAULT_MEMBERS = Object.freeze([
     {id:'rodrigo',name:'Rodrigo',role:'owner'},
-    {id:'daniele',name:'Daniele',role:'member'},
+    {id:'daniele',name:'Danelle',role:'member'},
   ]);
   const WORKSPACE_ID = 'familia-local';
   const memberIds = new Set(DEFAULT_MEMBERS.map(m=>m.id));
@@ -37,7 +37,7 @@
   }
   function responsibleLabel(item) {
     const ids=normalizedIds(item.responsible_ids);
-    return ids.length===2?'Rodrigo e Daniele':ids.length===1?memberName(ids[0]):'Não definido';
+    return ids.length===2?'Rodrigo e Danelle':ids.length===1?memberName(ids[0]):'Não definido';
   }
   function validateOwnership({creatorId,responsibleIds,visibility}) {
     const ids=normalizedIds(responsibleIds);
