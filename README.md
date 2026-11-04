@@ -46,7 +46,7 @@ Validar visualmente o calendário e os fluxos de cadastro, edição e movimenta�
 
 ## PR 3, Bloco 1 adicional: ambiente familiar de teste
 
-A interface de desenvolvimento inclui os perfis demonstrativos **Rodrigo** e **Danelle**, identificados no cabeçalho como **Usuário em teste**, dentro do espaço **Família**. É possível alternar o usuário simulado e filtrar a visualização por todos os registros acessíveis, compartilhados ou por responsável.
+A interface de desenvolvimento inclui os perfis demonstrativos **Rodrigo** e **Danielle**, identificados no cabeçalho como **Usuário em teste**, dentro do espaço **Família**. É possível alternar o usuário simulado e filtrar a visualização por todos os registros acessíveis, compartilhados ou por responsável.
 
 Nos cadastros de eventos, receitas e despesas são persistidos os campos:
 - `workspace_id` (espaço de trabalho familiar de teste);
@@ -64,7 +64,7 @@ O campo título oferece sugestões opcionais de acordo com a categoria: salário
 
 ### Testes adicionais
 
-`node --test tests/access-model.test.cjs` valida membros, responsáveis compartilhados, filtros individuais, migração de itens anteriores e restrições locais de propriedade. O teste de renderização também verificou o filtro do usuário e a ausência da despesa privada da Danelle no painel inicial simulado do Rodrigo.
+`node --test tests/access-model.test.cjs` valida membros, responsáveis compartilhados, filtros individuais, migração de itens anteriores e restrições locais de propriedade. O teste de renderização também verificou o filtro do usuário e a ausência da despesa privada da Danielle no painel inicial simulado do Rodrigo.
 
 ## Albus v3 — calendário primeiro e caixinhas (04/11/2026)
 
@@ -74,7 +74,7 @@ A PR #3 agora ativa `app-v3.js` e `goals.js` a partir de `index.html`; os arquiv
 
 **Layout:** indicadores compactos no topo, objetivos abaixo, e três regiões principais: filtros verticais à esquerda, calendário central e detalhamento do dia à direita. Removidos os botões duplicados de criação no topo e no painel lateral. Mantido o arrastar e soltar com alternativa de menu para mover.
 
-**Participantes e visibilidade:** Rodrigo e Danelle, múltiplos participantes, opção Selecionar todos e visibilidade familiar por padrão. Privacidade individual continua sendo simulação local, não autenticação verdadeira.
+**Participantes e visibilidade:** Rodrigo e Danielle, múltiplos participantes, opção Selecionar todos e visibilidade familiar por padrão. Privacidade individual continua sendo simulação local, não autenticação verdadeira.
 
 **Recorrência:** mensal em dia fixo ou no N-ésimo dia útil, com opção de contar sábado (convenção de pagamento de salários). O cálculo usa feriados nacionais fixos e é estimado: não incorpora automaticamente feriados móveis, locais e pontos facultativos. Edição de uma única ocorrência mantém a série e salva a alteração em `overrides`.
 
