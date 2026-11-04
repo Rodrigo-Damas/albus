@@ -146,8 +146,15 @@ const AlbusEngine = (function albusEngineFactory() {
     if(kind==='event'){
       const e=events.find(x=>x.id===id); if(!e)throw Error('Evento não encontrado.');
       const delta=dayDistance(e.date,toDate);
+      const linkedIds=new Set(entries.filter(x=>x.event_id===id).map(x=>x.id));
       return {...data,events:events.map(x=>x.id===id?{...x,date:toDate}:x),
-        entries:entries.map(x=>x.event_id===id?{...x,entry_date:shiftDate(x.entry_date,delta),payment_date:x.payment_date&&dateParts(x.payment_date)?shiftDate(x.payment_date,delta):x.payment_date}:x)};
+        entries:entries.map(x=>x.event_id===id?{...x,entry_date:shiftDate(x.entry_date,delta),
+          payment_date:x.payment_date&&dateParts(x.payment_date)?shiftDate(x.payment_date,delta):x.payment_date,
+          payment_date_override:x.payment_date_override&&dateParts(x.payment_date_override)?shiftDate(x.payment_date_override,delta):x.payment_date_override}:x),
+        overrides:(data.overrides||[]).map(x=>linkedIds.has(x.entry_id)?{...x,
+          occurrence_date:x.occurrence_date&&dateParts(x.occurrence_date)?shiftDate(x.occurrence_date,delta):x.occurrence_date,
+          moved_to_date:x.moved_to_date&&dateParts(x.moved_to_date)?shiftDate(x.moved_to_date,delta):x.moved_to_date,
+          payment_date_override:x.payment_date_override&&dateParts(x.payment_date_override)?shiftDate(x.payment_date_override,delta):x.payment_date_override}:x)};
     }
     if(kind==='entry'){
       if(!entries.some(x=>x.id===id))throw Error('Lançamento não encontrado.');
