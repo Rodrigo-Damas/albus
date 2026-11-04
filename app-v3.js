@@ -5,7 +5,7 @@ const E=AlbusEngine,A=AlbusAccess,G=AlbusGoals,M=AlbusMoneyMask;
 const KEY='albus-calendar-local-v1',root=document.getElementById('app');
 const TYPES={event:'Evento',expense:'Despesa',income:'Receita',goal:'Objetivo',task:'Tarefa',reserve:'Aporte / reserva'};
 const CATEGORIES=['Salário','Alimentação','Transporte','Saúde','Moradia','Lazer','Educação','Casa','Pessoal','Outros','Precaução'];
-const SUGGESTIONS={'Salário':['Salário Rodrigo','Salário Danelle','Salário de'],'Transporte':['Transporte para','Transporte de','Uber para'],'Saúde':['Consulta de','Exame de','Medicamento de'],'Moradia':['Aluguel','Condomínio','Energia','Internet'],'Alimentação':['Supermercado','Restaurante'],'Lazer':['Viagem para','Passeio de']};
+const SUGGESTIONS={'Salário':['Salário Rodrigo','Salário Danielle','Salário de'],'Transporte':['Transporte para','Transporte de','Uber para'],'Saúde':['Consulta de','Exame de','Medicamento de'],'Moradia':['Aluguel','Condomínio','Energia','Internet'],'Alimentação':['Supermercado','Restaurante'],'Lazer':['Viagem para','Passeio de']};
 const MEMBER=A.DEFAULT_MEMBERS,defaults={profile:'same',view:'cash',closingDay:25,dueDay:5,cardConfigured:false,variationPercent:10,provisionPercent:10,provisionFixedCents:0};
 const esc=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[c]));
 const id=()=>crypto?.randomUUID?.()||('albus-'+Date.now()+'-'+Math.random().toString(36).slice(2));
@@ -77,7 +77,7 @@ function filterLabel(id,label,help){
 function filters(){
  const s=db.settings;
  return '<aside class="surface albus-filter-panel"><strong>Filtros</strong><div class="albus-filter-field">'+
- filterLabel('owner-filter','Exibir lançamentos','Escolha visualizar todos os lançamentos acessíveis, somente os compartilhados ou aqueles em que Rodrigo ou Danelle participam. Os valores do resumo também acompanham o filtro.')+
+ filterLabel('owner-filter','Exibir lançamentos','Escolha visualizar todos os lançamentos acessíveis, somente os compartilhados ou aqueles em que Rodrigo ou Danielle participam. Os valores do resumo também acompanham o filtro.')+
  '<select id="owner-filter">'+
  options([['all','Todos acessíveis'],['shared','Compartilhados'],...MEMBER.map(x=>[x.id,'Participa: '+x.name])],state.filter)+
  '</select></div><div class="albus-filter-field">'+
@@ -224,7 +224,7 @@ function render(){
  options(MEMBER.map(x=>[x.id,x.name]),state.user)+'</select><span class="albus-family-pill">Família</span></div></header>'+
  '<main class="albus-main"><div class="albus-title-row albus-compact-head"><div><div class="albus-eyebrow">CALENDÁRIO · '+esc(monthTitle(state.month))+'</div>'+
  '<h1>Seu calendário.</h1></div></div>'+
- '<div class="albus-note">Ambiente de testes: Rodrigo e Danelle são perfis simulados. Os dados ainda ficam neste navegador, sem login real ou sincronização.</div>'+
+ '<div class="albus-note">Ambiente de testes: Rodrigo e Danielle são perfis simulados. Os dados ainda ficam neste navegador, sem login real ou sincronização.</div>'+
  (state.error?'<div class="error">'+esc(state.error)+'</div>':'')+(state.message?'<div class="success">'+esc(state.message)+'</div>':'')+
  dashboardCards()+goalCards()+
  '<section class="albus-dashboard albus-dashboard-three">'+filters()+calendar()+details()+'</section>'+
