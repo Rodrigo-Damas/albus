@@ -94,3 +94,17 @@ A PR #3 agora ativa `app-v3.js` e `goals.js` a partir de `index.html`; os arquiv
 - Campos de valores monetários em receitas, despesas, caixinhas, aportes e provisão de imprevistos exibem **R$ 0,01**, **R$ 12,34**, etc. enquanto o usuário digita. A máscara formata apenas a exibição e mantém o valor em centavos para cálculos/persistência.
 - Máscara reutilizável: `currency-mask.js`. Testes: `node --test tests/creation-ux.test.cjs`.
 - Os dados existentes no `localStorage` e a branch principal foram mantidos. Não há autenticação nem persistência em servidor nesta etapa.
+
+## Correção do arrastar e segurança dos dados (04/11/2026)
+
+- **Arrastar entre dias:** a interface `app-v3.js` usa `Pointer Events`, com captura do ponteiro, realce da célula de destino e suporte a mouse, caneta e telas sensíveis ao toque. No celular, segure a alça `⠿` do lançamento/evento; no calendário, arraste o chip diretamente. O botão `↔` permanece como alternativa de acessibilidade.
+- **Eventos:** mover um evento move todas as despesas vinculadas, preservando valores e demais propriedades.
+- **Recorrências:** arrastar uma ocorrência mensal altera a data somente daquele mês; a série principal não é modificada. Para compras no cartão exibidas pela visão de caixa, mover o lançamento ajusta a data prevista de pagamento, sem alterar a compra original. Não há conciliação bancária automática.
+- **Persistência sem substituição:** o armazenamento permanece em `localStorage` com chave **`albus-calendar-local-v1`**. Não existe comando de limpar os dados durante a atualização. O motor agora preserva campos desconhecidos do registro anterior. Antes de cada gravação, uma cópia do estado anterior é armazenada em `albus-calendar-local-v1-snapshot`.
+- **Exportar:** `↓ Backup` baixa um arquivo JSON com todos os cadastros salvos naquele endereço e navegador.
+- **Importar:** `↑ Importar` lê um backup JSON e apenas **adiciona itens com IDs ausentes**; não substitui os já cadastrados. Configurações locais atuais são preservadas. Importações exigem confirmação.
+- **Cuidado com endereços:** a URL permanente da branch não compartilha `localStorage` com URLs únicas de deploy da Vercel. Caso dados antigos estejam em outro hostname, abra aquele hostname no mesmo navegador e exporte os dados de lá antes de importá-los no link permanente.
+- **Limites:** os snapshots também ficam no mesmo navegador e não substituem backup externo. Um usuário que limpe os dados do site, troque de navegador/dispositivo ou perca o equipamento poderá perder os lançamentos que não exportou.
+- **Testes:** `node --test tests/drag-backup.test.cjs` cobre gesto de arrastar, movimentação de evento com despesas, recorrência individual, falha de escrita, backup e importação.
+
+**Não houve merge na `main` nem alteração no endereço oficial.**
