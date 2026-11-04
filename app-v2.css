@@ -119,3 +119,37 @@
  .albus-chip{font-size:8px;padding:3px}
  .albus-modal{padding:17px}
 }
+
+/* Refinamentos do bloco familiar: impede que os marcadores decorativos cubram títulos. */
+.albus-summary .summary-card::after { width:26px;height:26px;right:14px;top:14px;opacity:.48;pointer-events:none;z-index:0; }
+.albus-summary .summary-kicker { position:relative;z-index:1;padding-right:27px;line-height:1.4;white-space:normal;overflow-wrap:anywhere;min-height:34px;font-size:11px; }
+.albus-summary .summary-value,.albus-summary .summary-meta { position:relative;z-index:1; }
+.albus-top-right select { border:1px solid #e0e4f1;border-radius:9px;padding:8px 9px;background:#fff;color:#4f5b7f;font-size:12px;font-weight:700; }
+.albus-family-pill { display:inline-flex;border-radius:20px;padding:7px 10px;background:#eef1fe;color:#5c65a8;white-space:nowrap; }
+.albus-owner-filter { flex:0 1 240px; }
+.albus-owner-fields { padding:13px 13px 2px;margin:12px 0 14px;border:1px solid #e8ebf5;border-radius:12px;background:#fafbff; }
+.albus-owner-fields small {display:block;color:#9099ac;font-size:10px;line-height:1.5;margin:5px 0;}
+.albus-member-options { display:flex;gap:10px;flex-wrap:wrap; }
+.albus-member-choice { display:flex;gap:7px;align-items:center;padding:10px 12px;border:1px solid #e3e6ef;background:#fff;border-radius:9px;font-size:12px;font-weight:700;color:#5b6680;cursor:pointer; }
+.albus-member-choice input {width:auto!important;accent-color:#6670d5;}
+.albus-member-choice:has(input:checked) { background:#f0f2ff;border-color:#bfc5f3;color:#5661bd; }
+.albus-suggestions {display:flex;align-items:center;flex-wrap:wrap;gap:6px;margin-top:8px;}
+.albus-suggestions button {border:1px solid #e7e9f6;background:#f6f7ff;color:#6771a4;font-size:10px;padding:7px 9px;border-radius:20px;font-weight:700;}
+.albus-suggestions button:hover {background:#e9edfc;}
+.albus-day-actions {grid-template-columns:repeat(3,minmax(0,1fr));}
+.albus-day-actions .outline-button,.albus-day-actions .primary-button { padding:10px 6px;gap:4px;font-size:10px; }
+.albus-day-actions svg { width:14px;height:14px; }
+.albus-day-actions small {font-size:9px;}
+@media(max-width:900px){
+ .albus-top-right {flex-wrap:wrap;justify-content:flex-end;}
+ .albus-summary .summary-kicker {min-height:30px;}
+}
+@media(max-width:590px){
+ .albus-top-right label {display:none;}
+ .albus-family-pill {display:none;}
+ .albus-top-right select {max-width:110px;}
+ .albus-summary .summary-card::after {width:20px;height:20px;right:9px;top:10px;opacity:.25;}
+ .albus-summary .summary-kicker {padding-right:8px;font-size:10px;min-height:40px;}
+ .albus-day-actions {grid-template-columns:1fr 1fr;}
+ .albus-day-actions > :last-child {grid-column:1/-1;}
+}
