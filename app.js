@@ -1,12 +1,22 @@
 (function albusApplication() {
   'use strict';
   const E = AlbusEngine;
+  const A = AlbusAccess;
   const KEY = 'albus-calendar-local-v1';
   const root = document.getElementById('app');
   const defaults = {profile:'same',view:'cash',closingDay:25,dueDay:5,cardConfigured:false,variationPercent:10,provisionPercent:10,provisionFixedCents:0};
   const types = {expense:'Despesa',income:'Receita',reserve:'Reserva',task:'Tarefa'};
   const statusOptions = {expense:[['planned','Planejada'],['paid','Paga']],income:[['planned','Prevista'],['received','Recebida']],reserve:[['planned','Planejada'],['set_aside','Separada']],task:[['pending','Pendente'],['done','Concluída']]};
   const categories=['Alimentação','Casa','Educação','Lazer','Moradia','Outros','Pessoal','Precaução','Presente','Salário','Saúde','Transporte'];
+  const suggestions={
+    'Salário':['Salário Rodrigo','Salário Daniele','Salário de'],
+    'Transporte':['Transporte para','Transporte de','Uber para','Passagem para'],
+    'Saúde':['Consulta de','Exame de','Medicamento de'],
+    'Moradia':['Aluguel','Condomínio','Conta de energia','Conta de água','Internet'],
+    'Alimentação':['Supermercado','Restaurante','Almoço de'],
+    'Educação':['Curso de','Mensalidade de'],
+    'Lazer':['Passeio para','Viagem para']
+  };
   const paymentMethods=[['pix','Pix / transferência'],['debit','Débito'],['cash','Dinheiro'],['credit','Cartão de crédito']];
   const icons={
     calendar:'<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18"/>',
@@ -35,21 +45,45 @@
   function readLocal(){
     let parsed={};
     try {parsed=JSON.parse(localStorage.getItem(KEY)||'{}')||{};}catch{parsed={};}
-    const entries=Array.isArray(parsed.entries)?parsed.entries.filter(x=>x&&x.id&&E.dateParts(x.entry_date)).map(x=>({...x,payment_method:x.payment_method||'pix',variable:x.variable!==false})):[]; 
-    const events=Array.isArray(parsed.events)?parsed.events.filter(x=>x&&x.id&&E.dateParts(x.date)):[];
+    const entries=Array.isArray(parsed.entries)?parsed.entries.filter(x=>x&&x.id&&E.dateParts(x.entry_date)).map(x=>A.normalizeItem({...x,payment_method:x.payment_method||'pix',variable:x.variable!==false})):[]; 
+    const events=Array.isArray(parsed.events)?parsed.events.filter(x=>x&&x.id&&E.dateParts(x.date)).map(A.normalizeItem):[];
     const overrides=Array.isArray(parsed.overrides)?parsed.overrides:[];
     const settings={...defaults,...(parsed.settings||{})};
     return {entries,events,overrides,settings};
   }
   const store=readLocal();
-  const state={month:E.monthOf(todayISO()),selected:todayISO(),modal:null,notice:'',error:''};
+  const state={month:E.monthOf(todayISO()),selected:todayISO(),modal:null,notice:'',error:'',user:'rodrigo',ownerFilter:'all'};
   function persist(){
     try{localStorage.setItem(KEY,JSON.stringify(store));return true;}
     catch(error){state.error='Não foi possível salvar neste navegador. Verifique armazenamento disponível e modo privado.';return false;}
   }
-  const entriesInMonth=(view=store.settings.view)=>E.occurrencesForMonth(store.entries,store.overrides,state.month,store.settings,view);
+  const visibleEntries=()=>A.visibleItems(store.entries,state.user,state.ownerFilter);
+  const visibleEvents=()=>A.visibleItems(store.events,state.user,state.ownerFilter);
+  const entriesInMonth=(view=store.settings.view)=>E.occurrencesForMonth(visibleEntries(),store.overrides,state.month,store.settings,view);
   const selectedRows=()=>entriesInMonth().filter(x=>x.display_date===state.selected);
-  const sumMonth=()=>E.monthSummary(store.entries,store.overrides,state.month,store.settings);
+  const sumMonth=()=>E.monthSummary(visibleEntries(),store.overrides,state.month,store.settings);
+  function ownerFields(item) {
+    const user=state.user;
+    const responsible=A.normalizedIds(item?.responsible_ids||[user]);
+    const visibility=item?.visibility||'shared';
+    return `<div class="albus-owner-fields">
+      <div class="field"><label>Responsáveis</label>
+      <div class="albus-member-options">${A.DEFAULT_MEMBERS.map(m=>`<label class="albus-member-choice"><input type="checkbox" name="responsible_ids" value="${m.id}" ${responsible.includes(m.id)?'checked':''}/> ${esc(m.name)}</label>`).join('')}</div>
+      </div>
+      <div class="field"><label>Quem pode visualizar?</label><select name="visibility" id="item-visibility">${options([['shared','Compartilhado com a família'],['private','Individual (somente o criador)']],visibility)}</select>
+      <small>Itens individuais não aparecem para o outro membro neste teste. No aplicativo definitivo, isso dependerá de autenticação e regras de acesso ao banco.</small></div>
+    </div>`;
+  }
+  function ownerCaption(item) {
+    return `Responsável: ${A.responsibleLabel(item)} · ${item.visibility==='private'?'Individual':'Família'}`;
+  }
+  function ownershipFromForm(form,old) {
+    const visibility=String(form.get('visibility')||'shared');
+    const creator=old?.created_by&&old.created_by!=='legacy'?old.created_by:state.user;
+    const selected=form.getAll('responsible_ids').map(String);
+    const values=A.validateOwnership({creatorId:creator,responsibleIds:selected,visibility});
+    return {...values,created_by:creator,workspace_id:A.WORKSPACE_ID};
+  }
   function card(kind,label,value,caption,extra=''){
     return `<article class="summary-card ${kind} ${extra}"><div class="summary-kicker">${esc(label)}</div><div class="summary-value">${E.money(value)}</div><div class="summary-meta">${esc(caption)}</div></article>`;
   }
@@ -60,7 +94,7 @@
       <header class="albus-top">
         <div class="albus-brand"><span class="brand-icon">♥</span>albus<span class="brand-dot">.</span></div>
         <div class="albus-top-center">Calendário e planejamento financeiro</div>
-        <div class="albus-top-right">${icon('users')} Seu planejamento</div>
+        <div class="albus-top-right">${icon('users')} <label for="demo-user">Usuário em teste</label><select id="demo-user" aria-label="Usuário em teste">${options(A.DEFAULT_MEMBERS.map(m=>[m.id,m.name]),state.user)}</select><span class="albus-family-pill">Família</span></div>
       </header>
       <main class="albus-main">
         <div class="albus-title-row"><div><div class="albus-eyebrow">CALENDÁRIO · ${esc(month)}</div>
@@ -70,12 +104,18 @@
             <button class="outline-button" data-action="settings">${icon('settings')} Configurar</button>
             <button class="primary-button" data-action="new-event">${icon('plus')} Evento</button>
             <button class="primary-button" data-action="new-entry" data-type="expense">${icon('plus')} Despesa</button>
+            <button class="outline-button" data-action="new-entry" data-type="income">${icon('plus')} Receita</button>
           </div>
         </div>
-        <div class="albus-note">${icon('info')} <span><b>Versão de desenvolvimento:</b> seus cadastros ficam somente neste navegador. Ainda não existe sincronização ou backup em nuvem; não use este ambiente como único registro de informações importantes.</span></div>
+        <div class="albus-note">${icon('info')} <span><b>Ambiente de teste familiar:</b> alterne entre Rodrigo e Daniele para simular os dois perfis. Os dados e os filtros são locais a este navegador. <b>Não há login, isolamento de dados real, sincronização nem backup em nuvem.</b></span></div>
         ${state.error?`<div class="error">${esc(state.error)}</div>`:''}
         ${state.notice?`<div class="success">${esc(state.notice)}</div>`:''}
         <section class="albus-settings-row" aria-label="Preferências financeiras">
+          <div class="setting albus-owner-filter">
+            <label for="owner-filter">Exibir lançamentos</label>
+            <select id="owner-filter">${options([['all','Tudo que posso visualizar'],['shared','Compartilhados com a família'],...A.DEFAULT_MEMBERS.map(m=>[m.id,`Responsável: ${m.name}`])],state.ownerFilter)}</select>
+            <small>Os indicadores refletem o filtro selecionado.</small>
+          </div>
           <div class="setting">
             <label for="payment-profile">Como você costuma pagar suas compras?</label>
             <select id="payment-profile">${options([['same','No próprio mês (Pix, débito, dinheiro)'],['credit','No cartão, com pagamento posterior']],s.profile)}</select>
@@ -120,7 +160,7 @@
       const d=i-first+1;
       if(d<1||d>count){result+='<div class="albus-day outside" aria-hidden="true"></div>';continue;}
       const date=`${state.month}-${String(d).padStart(2,'0')}`;
-      const todayRows=rows.filter(x=>x.display_date===date),todaysEvents=store.events.filter(x=>x.date===date);
+      const todayRows=rows.filter(x=>x.display_date===date),todaysEvents=visibleEvents().filter(x=>x.date===date);
       const income=todayRows.filter(x=>x.entry_type==='income').reduce((a,x)=>a+(Number(x.amount_cents)||0),0);
       const expense=todayRows.filter(x=>x.entry_type==='expense').reduce((a,x)=>a+(Number(x.amount_cents)||0),0);
       const chips=[
@@ -143,7 +183,7 @@
     </article>`;
   }
   function renderEvent(event){
-    const child=store.entries.filter(x=>x.event_id===event.id);
+    const child=visibleEntries().filter(x=>x.event_id===event.id);
     const total=child.filter(x=>x.entry_type==='expense').reduce((a,x)=>a+(Number(x.amount_cents)||0),0);
     return `<div class="albus-event" data-drag-kind="event" data-drag-id="${esc(event.id)}" draggable="true">
       <div class="albus-event-header"><span class="albus-grip">${icon('grip')}</span><span class="albus-event-title">${icon('gift')} ${esc(event.title)}</span>
@@ -151,6 +191,7 @@
         <button type="button" class="albus-tiny-button ghost" data-action="edit-event" data-id="${esc(event.id)}" title="Editar evento">${icon('edit')}</button>
         <button type="button" class="albus-tiny-button ghost" data-action="move-event" data-id="${esc(event.id)}" title="Mover evento">${icon('move')}</button>
       </div>
+      <div class="albus-small">${esc(ownerCaption(event))}</div>
       ${event.notes?`<div class="albus-small">${esc(event.notes)}</div>`:''}
       ${child.map(x=>renderEntryRow(x,true)).join('')}
       <div style="margin-top:8px"><button class="albus-tiny-button" data-action="add-child" data-id="${esc(event.id)}">${icon('plus')} Adicionar despesa ao evento</button></div>
@@ -162,7 +203,7 @@
     const credit=isExpense&&entry.payment_method==='credit';
     const paidOn=isExpense?E.paymentDate({...entry,occurrence_date:d.occurrence_date||entry.entry_date},store.settings):'';
     const link=store.events.find(x=>x.id===entry.event_id);
-    const caption=[types[entry.entry_type]||'Lançamento',entry.category,credit?`Cartão · paga em ${paidOn.split('-').reverse().join('/')}`:'',child?`Compra ${entry.entry_date.split('-').reverse().join('/')}`:link?`Evento: ${link.title}`:''].filter(Boolean).join(' · ');
+    const caption=[types[entry.entry_type]||'Lançamento',entry.category,ownerCaption(entry),credit?`Cartão · paga em ${paidOn.split('-').reverse().join('/')}`:'',child?`Compra ${entry.entry_date.split('-').reverse().join('/')}`:link?`Evento: ${link.title}`:''].filter(Boolean).join(' · ');
     return `<div class="albus-row" draggable="true" data-drag-kind="entry" data-drag-id="${esc(entry.id)}">
       <span class="albus-grip" title="Arrastar lançamento">${icon('grip')}</span>
       <span class="text"><b>${esc(entry.title)}</b><div class="caption">${esc(caption)}</div></span>
@@ -172,7 +213,7 @@
     </div>`;
   }
   function renderDetails(){
-    const events=store.events.filter(x=>x.date===state.selected);
+    const events=visibleEvents().filter(x=>x.date===state.selected);
     const rows=selectedRows(),linked=new Set(events.map(x=>x.id));
     const entryRows=rows.filter(x=>!x.event_id||!linked.has(x.event_id));
     const dayCash=rows.filter(x=>x.entry_type==='expense').reduce((a,x)=>a+(Number(x.amount_cents)||0),0);
@@ -185,8 +226,9 @@
       <div class="day-overview"><div class="overview-card"><span class="small-label">Entradas</span><strong class="positive">${E.money(dayIncome)}</strong></div>
         <div class="overview-card"><span class="small-label">Saídas</span><strong class="negative">${E.money(dayCash)}</strong></div></div>
       <div class="albus-day-actions">
-        <div><button class="outline-button wide" data-action="new-event">${icon('calendar')} Adicionar evento</button><small>Pode reunir diversas despesas.</small></div>
-        <div><button class="primary-button wide" data-action="new-entry" data-type="expense">${icon('credit')} Adicionar despesa</button><small>Gasto avulso ou vinculado a um evento.</small></div>
+        <div><button class="outline-button wide" data-action="new-event">${icon('calendar')} Adicionar evento</button><small>Reúne várias despesas.</small></div>
+        <div><button class="primary-button wide" data-action="new-entry" data-type="expense">${icon('credit')} Adicionar despesa</button><small>Gasto independente ou vinculado.</small></div>
+        <div><button class="outline-button wide" data-action="new-entry" data-type="income">${icon('plus')} Adicionar receita</button><small>Entradas pessoais ou familiares.</small></div>
       </div>
       <div class="albus-detail-section"><h3>Eventos do dia · ${events.length}</h3>
         ${events.map(renderEvent).join('')||'<div class="albus-details-empty">Nenhum evento para esta data.</div>'}</div>
@@ -213,6 +255,7 @@
           <div class="field"><label>Nome do evento</label><input name="title" maxlength="100" required placeholder="Ex.: Aniversário de família" value="${esc(e?.title||'')}"/></div>
           <div class="field"><label>Data do evento</label><input name="date" type="date" required value="${esc(e?.date||m.date||state.selected)}"/></div>
           <div class="field"><label>Observações</label><textarea name="notes" maxlength="1000">${esc(e?.notes||'')}</textarea></div>
+          ${ownerFields(e)}
           <div class="form-footer">${e?`<button class="text-button danger" type="button" data-action="delete-event" data-id="${esc(e.id)}">Excluir</button>`:'<span></span>'}
           <div><button class="secondary-button" type="button" data-action="close">Cancelar</button> <button class="primary-button" type="submit">Salvar evento</button></div></div>
         </form></section></div>`;
@@ -225,18 +268,19 @@
     const kind=e?.entry_type||m.type||'expense';
     const val=e?.amount_cents??0;
     const method=e?.payment_method||(store.settings.profile==='credit'?'credit':'pix');
-    const eventsPairs=[['','Sem vínculo com evento'],...store.events.map(x=>[x.id,`${x.title} (${x.date.split('-').reverse().join('/')})`])];
+    const eventsPairs=[['','Sem vínculo com evento'],...visibleEvents().map(x=>[x.id,`${x.title} (${x.date.split('-').reverse().join('/')})`])];
     return `<div class="albus-modal-backdrop"><section class="albus-modal" role="dialog" aria-modal="true" aria-label="Cadastro financeiro">
       <div class="modal-header"><h2>${e?'Editar lançamento':'Novo lançamento'}</h2><button class="close-btn" data-action="close" aria-label="Fechar">${icon('close')}</button></div>
       <form id="entry-form">
-        <div class="field"><label>Título</label><input name="title" required maxlength="100" placeholder="Ex.: Presente, conta de luz, salário" value="${esc(e?.title||'')}"/></div>
+        <div class="field"><label>Título</label><input id="entry-title" name="title" required maxlength="100" placeholder="Ex.: Presente, conta de luz, salário" value="${esc(e?.title||'')}"/>
+        <div id="title-suggestions" class="albus-suggestions" aria-label="Sugestões opcionais de título"></div></div>
         <div class="field-row">
           <div class="field"><label>Tipo</label><select name="entry_type" id="entry-type">${options(Object.entries(types).map(([k,v])=>[k,v]),kind)}</select></div>
           <div class="field"><label>Data ${kind==='expense'?'da compra':''}</label><input name="entry_date" id="entry-date" type="date" required value="${esc(e?.entry_date||m.date||state.selected)}"/></div>
         </div>
         <div class="field-row" id="entry-amount-row">
           <div class="field"><label>Valor (R$)</label><input name="amount" inputmode="decimal" placeholder="0,00" value="${esc((val/100).toFixed(2).replace('.',','))}"/></div>
-          <div class="field"><label>Categoria</label><select name="category">${options(categories.map(x=>[x,x]),e?.category||'Outros')}</select></div>
+          <div class="field"><label>Categoria</label><select id="entry-category" name="category">${options(categories.map(x=>[x,x]),e?.category||(kind==='income'?'Salário':'Outros'))}</select></div>
         </div>
         <div class="field"><label>Status</label><select name="status" id="entry-status">${options(statusOptions[kind],e?.status||statusOptions[kind][0][0])}</select></div>
         <div id="expense-fields">
@@ -246,6 +290,7 @@
           <div id="credit-preview" class="hint-inline"></div>
         </div>
         <div class="field"><label>Observações</label><textarea name="notes" maxlength="1000" placeholder="Informações adicionais">${esc(e?.notes||'')}</textarea></div>
+        ${ownerFields(e)}
         <label class="field-checkbox"><input type="checkbox" name="monthly" ${e?.frequency==='monthly'?'checked':''}/> Repetir mensalmente</label>
         ${e?.frequency==='monthly'?'<div class="notice">Ao editar esta série, as mudanças serão aplicadas nas próximas ocorrências. Exceções anteriores já cadastradas serão mantidas.</div>':''}
         <div class="form-footer">${e?`<button type="button" class="text-button danger" data-action="delete-entry" data-id="${esc(e.id)}">Excluir</button>`:'<span></span>'}
@@ -267,6 +312,14 @@
         <div class="albus-small">A variação é uma simulação, não um débito. A provisão de imprevistos reduz o valor a destinar; reservas cadastradas são contabilizadas separadamente.</div>
         <div class="form-footer"><span></span><div><button class="secondary-button" type="button" data-action="close">Cancelar</button> <button class="primary-button" type="submit">Salvar preferências</button></div></div>
       </form></section></div>`;
+  }
+  function drawTitleSuggestions(){
+    const title=root.querySelector('#entry-title'),category=root.querySelector('#entry-category'),box=root.querySelector('#title-suggestions');
+    if(!title||!category||!box)return;
+    const kind=root.querySelector('#entry-type')?.value;
+    const list=category.value==='Salário'&&kind==='income'?suggestions['Salário']:(suggestions[category.value]||[]);
+    box.innerHTML=list.length?'<span class="albus-small">Sugestões opcionais: </span>'+list.map(x=>`<button type="button" data-title-suggestion="${esc(x)}">${esc(x)}</button>`).join(''):'';
+    box.querySelectorAll('[data-title-suggestion]').forEach(btn=>btn.addEventListener('click',()=>{title.value=btn.dataset.titleSuggestion;title.focus();}));
   }
   function updateFormFields(){
     const form=root.querySelector('#entry-form');if(!form)return;
@@ -337,6 +390,15 @@
       }
     }));
     root.querySelectorAll('.albus-day[data-action="select-day"]').forEach(cell=>cell.addEventListener('keydown',event=>{if(event.target===cell&&(event.key==='Enter'||event.key===' ')){event.preventDefault();state.selected=cell.dataset.date;render();}}));
+    root.querySelector('#demo-user')?.addEventListener('change',e=>{state.user=e.target.value;state.ownerFilter='all';state.notice='Perfil de demonstração alterado. Cada membro vê apenas os próprios itens individuais.';render();});
+    root.querySelector('#owner-filter')?.addEventListener('change',e=>{state.ownerFilter=e.target.value;render();});
+    root.querySelector('#item-visibility')?.addEventListener('change',e=>{
+      const fields=root.querySelectorAll('input[name="responsible_ids"]');
+      if(e.target.value==='private')fields.forEach(cb=>{cb.checked=cb.value===state.user;cb.disabled=cb.value!==state.user;});
+      else fields.forEach(cb=>cb.disabled=false);
+    });
+    root.querySelector('#entry-category')?.addEventListener('change',()=>drawTitleSuggestions());
+    root.querySelector('#entry-type')?.addEventListener('change',()=>drawTitleSuggestions());
     root.querySelector('#payment-profile')?.addEventListener('change',e=>{
       store.settings.profile=e.target.value;persist();
       if(store.settings.profile==='credit'&&!store.settings.cardConfigured){state.modal={kind:'settings'};}
@@ -357,6 +419,9 @@
       if(name==='entry-date')input?.addEventListener('input',updateFormFields);
     }
     updateFormFields();
+    drawTitleSuggestions();
+    const priv=root.querySelector('#item-visibility');
+    if(priv&&priv.value==='private')priv.dispatchEvent(new Event('change'));
     root.querySelectorAll('[data-drag-kind]').forEach(el=>el.addEventListener('dragstart',event=>{
       const payload={kind:el.dataset.dragKind,id:el.dataset.dragId};
       event.dataTransfer?.setData('text/plain',JSON.stringify(payload));
@@ -381,11 +446,12 @@
     const form=new FormData(event.currentTarget),title=String(form.get('title')||'').trim(),date=String(form.get('date')||''),notes=String(form.get('notes')||'');
     if(!title||title.length>100||!E.dateParts(date)){state.error='Informe título e data válidos.';render();return;}
     const old=store.events.find(x=>x.id===state.modal.id);
+    const owners=ownershipFromForm(form,old);
     if(old){
       // Alterar a data no formulário possui o mesmo efeito de arrastar o evento.
       if(old.date!==date&&!move('event',old.id,date))return;
-      const found=store.events.find(x=>x.id===old.id);found.title=title;found.notes=notes;
-    }else store.events.push({id:id(),title,date,notes});
+      const found=store.events.find(x=>x.id===old.id);Object.assign(found,{title,notes,...owners});
+    }else store.events.push({id:id(),title,date,notes,...owners});
     state.selected=date;state.month=E.monthOf(date);state.modal=null;state.error='';state.notice='Evento salvo. Você pode associar várias despesas a ele.';persist();render();
   }
   function onEntrySave(event){
@@ -400,10 +466,16 @@
       const status=String(form.get('status')||'planned');
       if(!statusOptions[type].some(x=>x[0]===status))throw Error('Status incompatível com o tipo.');
       const eventId=type==='expense'?String(form.get('event_id')||''):''; 
-      if(eventId&&!store.events.some(x=>x.id===eventId))throw Error('Evento associado não encontrado.');
+      if(eventId&&!visibleEvents().some(x=>x.id===eventId))throw Error('Evento associado não encontrado ou indisponível neste perfil.');
       const old=store.entries.find(x=>x.id===state.modal.id);
-      const value={title,entry_type:type,entry_date:date,amount_cents:amount,status,category:String(form.get('category')||'Outros'),
+      const owners=ownershipFromForm(form,old);
+      const value={...owners,title,entry_type:type,entry_date:date,amount_cents:amount,status,category:String(form.get('category')||'Outros'),
         notes:String(form.get('notes')||'').slice(0,1000),payment_method:method,event_id:eventId||null,variable:type==='expense'?form.has('variable'):false,frequency:form.has('monthly')?'monthly':'none'};
+      if(eventId){
+        const parent=store.events.find(x=>x.id===eventId);
+        if(parent.visibility==='private'&&value.visibility!=='private')throw Error('Uma despesa compartilhada não pode ser vinculada a um evento individual.');
+        if(parent.visibility==='private'&&parent.created_by!==value.created_by)throw Error('Somente o criador pode vincular despesas ao evento individual.');
+      }
       if(old){Object.assign(old,value);}else store.entries.push({id:id(),...value});
       state.selected=date;state.month=E.monthOf(date);
       state.modal=null;state.error='';state.notice='Lançamento salvo. Compras no crédito seguem a data da fatura, não são duplicadas.';persist();render();
