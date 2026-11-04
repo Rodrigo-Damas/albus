@@ -50,11 +50,30 @@ const AlbusEngine = (function albusEngineFactory() {
     if(entry.payment_method==='credit')return billingDueDate(purchase,settings);
     return entry.payment_date&&dateParts(entry.payment_date)?entry.payment_date:purchase;
   }
+  function isBrazilFixedHoliday(iso) {
+    const mmdd=String(iso).slice(5);
+    return new Set(['01-01','04-21','05-01','09-07','10-12','11-02','11-15','11-20','12-25']).has(mmdd);
+  }
+  // Estimativa para datas de pagamento; feriados estaduais e municipais exigem ajuste manual.
+  function businessDate(month,ordinal=5,includeSaturday=true,extraHolidays=[]) {
+    const end=daysInMonth(month),wanted=Math.max(1,Math.min(25,whole(ordinal,5)));
+    let count=0;
+    const blocked=new Set(extraHolidays||[]);
+    for(let day=1;day<=end;day++){
+      const iso=dateInMonth(month,day);
+      const dow=new Date(iso+'T12:00:00Z').getUTCDay();
+      if(dow===0||(!includeSaturday&&dow===6)||isBrazilFixedHoliday(iso)||blocked.has(iso))continue;
+      count++;
+      if(count===wanted)return iso;
+    }
+    return dateInMonth(month,end);
+  }
   function occurrenceInMonth(entry,month) {
     if(!dateParts(entry.entry_date))return null;
-    if(entry.frequency!=='monthly')return monthOf(entry.entry_date)===month?entry.entry_date:null;
     if(month<monthOf(entry.entry_date))return null;
-    return dateInMonth(month,+entry.entry_date.slice(8,10));
+    if(entry.frequency==='monthly')return dateInMonth(month,+entry.entry_date.slice(8,10));
+    if(entry.frequency==='business_day_monthly')return businessDate(month,entry.business_day_number||5,entry.include_saturday!==false,entry.extra_holidays);
+    return monthOf(entry.entry_date)===month?entry.entry_date:null;
   }
   function expandMonth(entries,overrides,month) {
     const changes=new Map((overrides||[]).map(x=>[`${x.entry_id}|${x.occurrence_date}`,x]));
@@ -64,7 +83,7 @@ const AlbusEngine = (function albusEngineFactory() {
       const o=changes.get(`${entry.id}|${date}`);
       if(o?.deleted)return [];
       return [{...entry,...(o||{}),id:entry.id,entry_date:entry.entry_date,occurrence_date:date,
-        occurrence_id:`${entry.id}|${date}`,is_recurring:entry.frequency==='monthly'}];
+        occurrence_id:`${entry.id}|${date}`,is_recurring:['monthly','business_day_monthly'].includes(entry.frequency)}];
     }).sort((a,b)=>a.occurrence_date.localeCompare(b.occurrence_date));
   }
   function occurrencesForMonth(entries,overrides,month,settings={},view='cash') {
@@ -126,6 +145,6 @@ const AlbusEngine = (function albusEngineFactory() {
     if(!Number.isSafeInteger(n)||n>99999999999)throw Error('Valor acima do limite.');
     return n;
   }
-  return {dateParts,addMonths,shiftDate,dayDistance,monthOf,daysInMonth,dateInMonth,billingDueDate,paymentDate,expandMonth,occurrencesForMonth,monthSummary,moveItem,money,parseMoney,clamp};
+  return {dateParts,addMonths,shiftDate,dayDistance,monthOf,daysInMonth,dateInMonth,businessDate,isBrazilFixedHoliday,billingDueDate,paymentDate,expandMonth,occurrencesForMonth,monthSummary,moveItem,money,parseMoney,clamp};
 })();
 if (typeof module !== 'undefined' && module.exports) module.exports = AlbusEngine;
