@@ -9,7 +9,7 @@
   const statusOptions = {expense:[['planned','Planejada'],['paid','Paga']],income:[['planned','Prevista'],['received','Recebida']],reserve:[['planned','Planejada'],['set_aside','Separada']],task:[['pending','Pendente'],['done','Concluída']]};
   const categories=['Alimentação','Casa','Educação','Lazer','Moradia','Outros','Pessoal','Precaução','Presente','Salário','Saúde','Transporte'];
   const suggestions={
-    'Salário':['Salário Rodrigo','Salário Danelle','Salário de'],
+    'Salário':['Salário Rodrigo','Salário Danielle','Salário de'],
     'Transporte':['Transporte para','Transporte de','Uber para','Passagem para'],
     'Saúde':['Consulta de','Exame de','Medicamento de'],
     'Moradia':['Aluguel','Condomínio','Conta de energia','Conta de água','Internet'],
@@ -107,7 +107,7 @@
             <button class="outline-button" data-action="new-entry" data-type="income">${icon('plus')} Receita</button>
           </div>
         </div>
-        <div class="albus-note">${icon('info')} <span><b>Ambiente de teste familiar:</b> alterne entre Rodrigo e Danelle para simular os dois perfis. Os dados e os filtros são locais a este navegador. <b>Não há login, isolamento de dados real, sincronização nem backup em nuvem.</b></span></div>
+        <div class="albus-note">${icon('info')} <span><b>Ambiente de teste familiar:</b> alterne entre Rodrigo e Danielle para simular os dois perfis. Os dados e os filtros são locais a este navegador. <b>Não há login, isolamento de dados real, sincronização nem backup em nuvem.</b></span></div>
         ${state.error?`<div class="error">${esc(state.error)}</div>`:''}
         ${state.notice?`<div class="success">${esc(state.notice)}</div>`:''}
         <section class="albus-settings-row" aria-label="Preferências financeiras">
