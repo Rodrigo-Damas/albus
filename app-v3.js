@@ -352,7 +352,9 @@ function render(){
  '<h1>Seu calendário.</h1></div></div>'+
  '<div class="albus-note">Ambiente de testes: Rodrigo e Danielle são perfis simulados. Os dados ficam neste navegador e neste endereço. <b>Para protegê-los, use ↓ Backup antes de testar mudanças importantes.</b> Não há sincronização entre links diferentes.</div>'+
  (state.error?'<div class="error">'+esc(state.error)+'</div>':'')+(state.message?'<div class="success">'+esc(state.message)+'</div>':'')+
- dashboardCards()+goalCards()+
+ '<div class="albus-sticky-sentinel" aria-hidden="true"></div>'+
+ '<div class="albus-financial-sticky" id="financial-sticky" role="region" aria-label="Resumo financeiro e origem dos pagamentos">'+dashboardCards()+'</div>'+
+ goalCards()+
  '<section class="albus-dashboard albus-dashboard-three">'+filters()+calendar()+details()+'</section>'+
  '<div class="albus-footer"><b>Entenda o mês:</b> receitas previstas financiam pagamentos com vencimento neste mês, inclusive faturas de compras anteriores. Compras no cartão para meses futuros: '+mny(s.futureCard)+'. Sem duplicidade.</div>'+
  '</main>'+(
@@ -513,7 +515,17 @@ function updateEntryUI(){
   preview.textContent=db.settings.cardConfigured&&E.dateParts(form.elements.entry_date.value)?'Pagamento previsto: '+fmt(E.billingDueDate(form.elements.entry_date.value,db.settings)):'Configure o cartão em Cartão e imprevistos.';
  }
 }
+function updateStickySummary(){
+ const summary=root.querySelector('#financial-sticky'),marker=root.querySelector('.albus-sticky-sentinel');
+ if(!summary||!marker)return;
+ // O cabeçalho do aplicativo rola normalmente; só o resumo permanece visível.
+ const pinned=marker.getBoundingClientRect().bottom<=1;
+ summary.classList.toggle('is-stuck',pinned);
+}
+window.addEventListener('scroll',updateStickySummary,{passive:true});
+window.addEventListener('resize',updateStickySummary);
 function bind(){
+ updateStickySummary();
  root.querySelectorAll('[data-action]').forEach(el=>el.addEventListener('click',event=>{
   const action=el.dataset.action,item=el.dataset.id,kind=el.dataset.kind;
   if(action==='day'){state.day=el.dataset.date;state.message='';return render()}
