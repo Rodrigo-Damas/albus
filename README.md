@@ -117,3 +117,11 @@ A PR #3 agora ativa `app-v3.js` e `goals.js` a partir de `index.html`; os arquiv
 - **Origem dos pagamentos:** os indicadores continuam baseados no mês em que o dinheiro sai. Novo quadro de origem no resumo mensal e detalhamento diário: **Cartão · compras anteriores**, **Cartão · compras do mês** e **Pix, débito e dinheiro**. O valor é somente decomposto, não cobrado em duplicidade. Lançamentos de cartão detalham data de compra e vencimento.
 - **Compatibilidade:** `albus-calendar-local-v1` foi mantido, assim como a importação/exportação de backups e a prévia fixa da branch. Não houve atualização do site oficial ou merge na `main`.
 - **Verificação:** `node --test tests/event-nested-payments.test.cjs` (cinco cenários) valida prévia dos dois modais, gravação conjunta, falha de armazenamento sem perda, cartão comprado em novembro e pago em dezembro, e popover limitado à tela. A navegação manual em navegadores variados ainda deve ser conferida no preview.
+
+## Resumo financeiro fixo no scroll (04/11/2026)
+
+O quadro de **Receitas**, **Pagamentos previstos**, **Reservas e imprevistos** e **Valor a destinar** foi agrupado com a seção **Origem dos pagamentos** em uma faixa `position: sticky` no topo da rolagem. O cabeçalho Albus, o título e a mensagem explicativa continuam rolando normalmente. Objetivos, filtros, calendário e painel do dia também permanecem no fluxo normal, abaixo da faixa financeira.
+
+Ao fixar, o resumo reduz o espaçamento e oculta a descrição auxiliar dos cards, preservando os números. O comportamento é adaptado para larguras menores. Valores de receita são verdes; pagamentos, vermelhos; reservas/imprevistos, azuis; valor a destinar, vermelho, com zero equilibrado em verde. O saldo negativo exibe o sinal de menos em vez de valor absoluto, com descrição de déficit.
+
+Alteração somente de layout e apresentação: **não modifica o formato, as chaves de armazenamento nem os cálculos financeiros**. Arquivo de validação: `tests/sticky-summary.test.cjs`. Ainda é recomendada uma revisão visual em telas móveis pequenas, nas quais a faixa ocupa mais altura.
