@@ -23,7 +23,7 @@ function load(){
  overrides:Array.isArray(v.overrides)?v.overrides:[],settings:{...defaults,...v.settings}};
 }
 B.ensureSnapshot(localStorage);
-const db=load(),state={user:'rodrigo',filter:'all',month:E.monthOf(today()),day:today(),modal:null,createOpen:false,cdi:null,message:'',error:''};
+const db=load(),state={user:'rodrigo',filter:'all',month:E.monthOf(today()),day:today(),modal:null,eventSession:null,createOpen:false,cdi:null,message:'',error:''};
 const safe=()=>{try{B.save(localStorage,db);return true}catch(e){state.error='Não foi possível salvar no armazenamento local. Exporte um backup e verifique o espaço disponível.';return false}};
 const visible=items=>A.visibleItems(items,state.user,state.filter);
 const entries=()=>visible(db.entries), events=()=>visible(db.events),goals=()=>visible(db.goals);
@@ -184,11 +184,78 @@ function entryForm(m){
 }
 function eventForm(m){
  const old=db.events.find(x=>x.id===m.id);
- return modal(old?'Editar evento':'Criar evento','<form id="event-form"><div class="field"><label>Nome</label><input name="title" required maxlength="100" value="'+esc(old?.title||'')+'"/></div>'+
- '<div class="field"><label>Data do evento</label><input name="date" type="date" required value="'+(old?.date||m.date||state.day)+'"/></div>'+
- ownerInputs(old)+'<div class="field"><label>Observações</label><textarea name="notes">'+esc(old?.notes||'')+'</textarea></div>'+
+ const session=state.eventSession;
+ const draft=session?.draft||null;
+ const date=draft?.date||old?.date||m.date||state.day;
+ const existing=old?db.entries.filter(x=>x.event_id===old.id):[];
+ const staged=session?.staged||[];
+ const total=[...existing,...staged].filter(x=>x.entry_type==='expense').reduce((n,x)=>n+Number(x.amount_cents||0),0);
+ const ownersItem=draft?{responsible_ids:draft.responsible_ids,visibility:draft.visibility}:old;
+ const linked='<section class="albus-event-linked"><div class="albus-event-linked-head"><div><strong>Despesas vinculadas</strong><span>'+[...existing,...staged].length+' despesa(s) · '+mny(total)+'</span></div>'+
+ button('+ Adicionar despesa','event-add-expense','','outline-button albus-child-add')+'</div>'+
+ '<p class="albus-small">Crie quantas despesas precisar antes de salvar o evento. A janela de despesa retorna para este cadastro.</p>'+
+ '<div class="albus-event-linked-list">'+(
+  [...existing.map(x=>({data:x,pending:false})),...staged.map((x,index)=>({data:x,pending:true,index}))].map(({data,pending,index})=>
+   '<div class="albus-event-linked-row"><span><b>'+esc(data.title)+'</b><small>'+esc(data.payment_method==='credit'?'Cartão de crédito':data.payment_method==='debit'?'Débito':data.payment_method==='cash'?'Dinheiro':'Pix')+' · '+fmt(data.entry_date)+(pending?' · Rascunho':' · Salva')+'</small></span>'+
+   '<strong>'+mny(data.amount_cents)+'</strong>'+
+   (pending?button('×','event-remove-expense','data-index="'+index+'" aria-label="Remover despesa não salva"','albus-tiny-button ghost'):'')+'</div>').join('')
+  ||'<div class="albus-details-empty">Nenhuma despesa vinculada.</div>')+'</div></section>';
+ return modal(old?'Editar evento':'Criar evento','<form id="event-form"><div class="field"><label>Nome</label><input name="title" required maxlength="100" value="'+esc(draft?.title??old?.title??'')+'"/></div>'+
+ '<div class="field"><label>Data do evento</label><input name="date" type="date" required value="'+date+'"/></div>'+
+ ownerInputs(ownersItem)+linked+
+ '<div class="field"><label>Observações</label><textarea name="notes">'+esc(draft?.notes??old?.notes??'')+'</textarea></div>'+
  '<div class="form-footer">'+(old?button('Excluir','delete-event','data-id="'+esc(old.id)+'"','text-button danger'):'<span></span>')+'<div>'+button('Cancelar','close','','secondary-button')+
  ' <button type="submit" class="primary-button">Salvar evento</button></div></div></form>');
+}
+function captureEventDraft(){
+ const node=root.querySelector('#event-form');
+ if(!node)return;
+ const f=new FormData(node);
+ if(!state.eventSession)state.eventSession={id:state.modal?.id||null,draft:null,staged:[]};
+ state.eventSession.draft={
+   title:String(f.get('title')||''),
+   date:String(f.get('date')||state.day),
+   notes:String(f.get('notes')||''),
+   responsible_ids:f.getAll('responsible_ids').map(String),
+   visibility:String(f.get('visibility')||'shared')
+ };
+}
+function eventExpenseForm(){
+ const session=state.eventSession;
+ const existing=state.modal?.editIndex!==undefined?session?.staged[state.modal.editIndex]:null;
+ const eventDate=session?.draft?.date||state.day;
+ return modal(existing?'Editar despesa vinculada':'Adicionar despesa ao evento',
+ '<form id="event-expense-form">'+
+ '<div class="field"><label>Título da despesa</label><input name="title" required maxlength="100" placeholder="Ex.: Restaurante, presentes, transporte" value="'+esc(existing?.title||'')+'"/></div>'+
+ '<div class="field-row"><div class="field"><label>Valor (R$)</label>'+moneyInput('amount',existing?.amount_cents||0,'required')+'</div>'+
+ '<div class="field"><label>Data da compra</label><input name="entry_date" type="date" required value="'+(existing?.entry_date||eventDate)+'"/></div></div>'+
+ '<div class="field-row"><div class="field"><label>Forma de pagamento</label><select name="payment_method">'+
+ options([['pix','Pix'],['debit','Débito'],['cash','Dinheiro'],['credit','Cartão de crédito']],existing?.payment_method||(db.settings.profile==='credit'?'credit':'pix'))+'</select></div>'+
+ '<div class="field"><label>Categoria</label><select name="category">'+options(CATEGORIES.map(x=>[x,x]),existing?.category||'Outros')+'</select></div></div>'+
+ '<div class="field"><label>Situação</label><select name="status">'+options([['planned','Planejada'],['paid','Paga']],existing?.status||'planned')+'</select></div>'+
+ '<label class="field-checkbox"><input name="variable" type="checkbox" '+(existing?.variable!==false?'checked':'')+'/> Despesa variável</label>'+
+ '<div class="albus-warning">Esta despesa será salva junto com o evento. Se for no cartão, o pagamento será contabilizado conforme a fatura, mesmo que ocorra no mês seguinte.</div>'+
+ '<div class="form-footer">'+button('Voltar ao evento','event-return','','secondary-button')+' <button type="submit" class="primary-button">Adicionar despesa</button></div></form>');
+}
+function submitEventExpense(ev){
+ ev.preventDefault();
+ try{
+  const f=new FormData(ev.currentTarget),title=String(f.get('title')||'').trim(),date=String(f.get('entry_date')||''),amount=E.parseMoney(f.get('amount'));
+  const method=String(f.get('payment_method')||'pix');
+  if(!title||title.length>100||!E.dateParts(date)||amount<=0)throw Error('Informe título, valor positivo e data da compra.');
+  if(method==='credit'&&!db.settings.cardConfigured)throw Error('Configure o fechamento e vencimento do cartão antes de vincular despesas no crédito.');
+  const session=state.eventSession;
+  if(!session)throw Error('O formulário do evento não está disponível.');
+  const ownerIds=session.draft?.responsible_ids?.length?session.draft.responsible_ids:MEMBER.map(x=>x.id);
+  const record={id:id(),entry_type:'expense',title,entry_date:date,amount_cents:amount,
+   payment_method:method,status:String(f.get('status')||'planned'),category:String(f.get('category')||'Outros'),
+   variable:f.has('variable'),frequency:'none',notes:'',created_by:state.user,
+   responsible_ids:ownerIds,visibility:session.draft?.visibility||'shared',workspace_id:A.WORKSPACE_ID};
+  const index=state.modal?.editIndex;
+  if(Number.isInteger(index)&&index>=0&&index<session.staged.length)session.staged[index]={...record,id:session.staged[index].id};
+  else session.staged.push(record);
+  state.modal={type:'event',id:session.id,date:session.draft?.date||state.day};state.error='';render();
+ }catch(err){error(err)}
 }
 function goalForm(m){
  const old=db.goals.find(x=>x.id===m.id)||{};
@@ -255,6 +322,7 @@ function render(){
  '</main>'+(
  state.modal?.type==='entry'?entryForm(state.modal):
  state.modal?.type==='event'?eventForm(state.modal):
+ state.modal?.type==='event-expense'?eventForm({id:state.eventSession?.id,date:state.eventSession?.draft?.date})+eventExpenseForm():
  state.modal?.type==='goal'?goalForm(state.modal):
  state.modal?.type==='goal-details'?goalDetails(state.modal):
  state.modal?.type==='contribution'?contributionForm(state.modal):
@@ -271,6 +339,8 @@ function error(e){
  msg.textContent=String(e.message||e);
 }
 function open(type,extra={}){
+ if(type==='event')state.eventSession={id:extra.id||null,draft:null,staged:[]};
+ else if(type!=='event-expense')state.eventSession=null;
  state.modal={type,...extra};state.createOpen=false;state.error='';render();
 }
 function submitEntry(ev){
@@ -303,14 +373,35 @@ function submitEntry(ev){
  }catch(e){error(e)}
 }
 function submitEvent(ev){
- ev.preventDefault();try{
- const f=new FormData(ev.currentTarget),old=db.events.find(x=>x.id===state.modal.id),date=String(f.get('date')||''),title=String(f.get('title')||'').trim();
- if(!title||!E.dateParts(date))throw Error('Informe título e data válidos.');
- const ownership=owners(f,old);
- if(old){if(old.date!==date&&!move('event',old.id,date,true))return;Object.assign(old,{title,date,notes:String(f.get('notes')||''),...ownership});}
- else db.events.push({id:id(),title,date,notes:String(f.get('notes')||''),...ownership});
- state.day=date;state.month=E.monthOf(date);state.modal=null;state.message='Evento salvo.';safe();render();
- }catch(e){error(e)}
+ ev.preventDefault();
+ try{
+  const f=new FormData(ev.currentTarget),old=db.events.find(x=>x.id===state.modal.id),
+   date=String(f.get('date')||''),title=String(f.get('title')||'').trim();
+  if(!title||title.length>100||!E.dateParts(date))throw Error('Informe título e data válidos.');
+  const ownership=owners(f,old),eventId=old?.id||id();
+  let next={...db,events:[...db.events],entries:[...db.entries],overrides:[...db.overrides]};
+  if(old){
+   if(old.date!==date){
+    const linked=next.entries.filter(x=>x.event_id===eventId);
+    if(linked.some(x=>['paid','received','set_aside'].includes(x.status))&&!confirm('O evento tem despesas efetivadas. Alterar as datas históricas e continuar?'))return;
+    next=E.moveItem(next,'event',eventId,date);
+   }
+   next.events=next.events.map(x=>x.id===eventId?{...x,title,date,notes:String(f.get('notes')||''),...ownership}:x);
+  }else next.events.push({id:eventId,title,date,notes:String(f.get('notes')||''),...ownership});
+  const staged=state.eventSession?.staged||[];
+  for(const item of staged){
+   const record={...item,event_id:eventId,created_by:ownership.created_by,
+    visibility:ownership.visibility,responsible_ids:ownership.responsible_ids,workspace_id:A.WORKSPACE_ID};
+   if(record.payment_method==='credit'&&!db.settings.cardConfigured)throw Error('Configure o cartão antes de salvar as despesas vinculadas.');
+   next.entries.push(record);
+  }
+  // Grava o evento e todas as despesas novas na mesma operação.
+  B.save(localStorage,next);
+  Object.assign(db,next);
+  state.day=date;state.month=E.monthOf(date);state.modal=null;state.eventSession=null;state.error='';
+  state.message=staged.length?'Evento e '+staged.length+' despesa(s) vinculada(s) salvos.':'Evento salvo.';
+  render();
+ }catch(err){error(err)}
 }
 function submitGoal(ev){
  ev.preventDefault();try{
@@ -394,7 +485,26 @@ function bind(){
   if(action==='today'){state.month=E.monthOf(today());state.day=today();return render()}
   if(action==='toggle-create'){state.createOpen=!state.createOpen;return render()}
   if(action==='create'){return open(kind==='goal'?'goal':kind==='event'?'event':'entry',{kind,date:state.day})}
-  if(action==='close'){state.modal=null;state.error='';return render()}
+  if(action==='close'){
+   if(state.modal?.type==='event-expense'){
+     state.modal={type:'event',id:state.eventSession?.id,date:state.eventSession?.draft?.date||state.day};state.error='';return render();
+   }
+   state.modal=null;state.eventSession=null;state.error='';return render();
+  }
+  if(action==='event-add-expense'){
+   captureEventDraft();
+   state.modal={type:'event-expense'};state.error='';return render();
+  }
+  if(action==='event-return'){
+   state.modal={type:'event',id:state.eventSession?.id,date:state.eventSession?.draft?.date||state.day};
+   state.error='';return render();
+  }
+  if(action==='event-remove-expense'){
+   captureEventDraft();
+   const index=Number(el.dataset.index);
+   if(Number.isInteger(index)&&index>=0&&index<(state.eventSession?.staged.length||0))state.eventSession.staged.splice(index,1);
+   return render();
+  }
   if(action==='settings')return open('settings');
   if(action==='goal-details')return open('goal-details',{id:item});
   if(action==='edit-goal')return open('goal',{id:item});
@@ -445,7 +555,7 @@ function bind(){
  listen('#all-members',e=>{root.querySelectorAll('input[name="responsible_ids"]').forEach(i=>{if(!i.disabled)i.checked=e.target.checked})});
  for(const field of root.querySelectorAll('input[name="responsible_ids"]'))field.addEventListener('change',()=>{const all=root.querySelector('#all-members');if(all)all.checked=[...root.querySelectorAll('input[name="responsible_ids"]')].every(x=>x.checked)});
  const formBind=(name,fn)=>root.querySelector(name)?.addEventListener('submit',fn);
- formBind('#entry-form',submitEntry);formBind('#event-form',submitEvent);formBind('#goal-form',submitGoal);formBind('#contribution-form',submitContribution);formBind('#settings-form',submitSettings);
+ formBind('#entry-form',submitEntry);formBind('#event-form',submitEvent);formBind('#event-expense-form',submitEventExpense);formBind('#goal-form',submitGoal);formBind('#contribution-form',submitContribution);formBind('#settings-form',submitSettings);
  formBind('#move-form',e=>{e.preventDefault();try{move(state.modal.kind,state.modal.id,new FormData(e.currentTarget).get('date'),false,state.modal.occurrence)}catch(err){error(err)}});
  updateEntryUI();
  for(const c of root.querySelectorAll('.albus-day[role="button"]'))c.addEventListener('keydown',e=>{if(e.target===c&&(e.key==='Enter'||e.key===' ')){e.preventDefault();state.day=c.dataset.date;render()}});
