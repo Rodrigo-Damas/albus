@@ -1,0 +1,121 @@
+
+/* Albus v2: preserva tipografia, cores e cartões da versão anterior. */
+:root { --paper:#fff; --line:#ebedf3; --ink:#1e2638; --muted:#8691a6; --blue:#5964d8; --green:#169c72; --red:#df5e62; }
+.albus-shell { min-height:100vh; background:#f7f8fc; }
+.albus-top { display:flex;align-items:center;justify-content:space-between;gap:18px;min-height:80px;padding:17px clamp(18px,4vw,58px);background:white;border-bottom:1px solid var(--line); }
+.albus-brand { display:flex;align-items:center;gap:11px;font-family:Manrope,sans-serif;font-size:23px;font-weight:800;letter-spacing:-1px; }
+.albus-brand .brand-icon { background:#5e68df; }
+.albus-top-center { color:#646c90;font-weight:700;font-size:13px; }
+.albus-top-right { display:flex;align-items:center;gap:9px;color:#7a859c;font-weight:700;font-size:12px; }
+.albus-main { max-width:1430px;margin:0 auto;padding:34px clamp(14px,3vw,42px) 60px; }
+.albus-title-row { display:flex;align-items:center;justify-content:space-between;gap:15px;margin-bottom:22px;flex-wrap:wrap; }
+.albus-eyebrow { color:#949fc3;font-size:10px;letter-spacing:1.2px;font-weight:800;text-transform:uppercase; }
+.albus-title-row h1 { font-family:Manrope,sans-serif;margin:5px 0 6px;font-size:25px;letter-spacing:-.8px; }
+.albus-subtitle { font-size:13px;color:#8691a6;margin:0;line-height:1.5; }
+.albus-actions { display:flex;gap:9px;align-items:center;flex-wrap:wrap; }
+.albus-actions .primary-button { padding:12px 15px; }
+.albus-note { color:#76663f;background:#fffaf0;border:1px solid #f2e8cd;border-radius:11px;padding:11px 14px;font-size:12px;line-height:1.5;margin-bottom:19px;display:flex;gap:9px;align-items:flex-start; }
+.albus-note svg { color:#c09548;flex:none; }
+.albus-settings-row { display:flex;gap:18px;align-items:end;justify-content:space-between;flex-wrap:wrap;margin-bottom:20px;padding:15px 18px;border-radius:14px;background:#fff;border:1px solid #eceef5; }
+.albus-settings-row .setting { display:flex;flex-direction:column;gap:5px;min-width:230px;flex:1; }
+.albus-settings-row label { color:#77839a;font-size:11px;font-weight:800; }
+.albus-settings-row select { padding:9px 12px;border:1px solid #e0e5f0;border-radius:9px;background:white;color:#27344b;font-size:13px;font-weight:700;width:100%; }
+.albus-settings-row small { font-size:10px;color:#8d98ad; }
+.albus-settings-row .setting-button { margin-bottom:1px; }
+.albus-summary { display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:13px;margin-bottom:17px; }
+.albus-summary .summary-card { padding:18px 18px 16px;min-height:111px; }
+.albus-summary .summary-value { font-size:clamp(17px,1.8vw,22px); }
+.albus-summary .summary-card.balance .summary-value { color:var(--red); }
+.albus-summary .summary-card.balance.zero .summary-value { color:var(--green); }
+.albus-summary .summary-card.balance.negative .summary-value { color:#c23a46; }
+.albus-education { display:flex;align-items:flex-start;gap:13px;justify-content:space-between;margin-bottom:23px;padding:13px 16px;background:#f0f2fe;border:1px solid #e3e7fa;border-radius:12px;color:#5b6697; }
+.albus-education p { margin:0;font-size:12px;line-height:1.6; }
+.albus-education strong { color:#3c4886; }
+.albus-education .pill { flex:none;display:inline-flex;border-radius:20px;background:#fff;color:#656f9f;font-size:10px;font-weight:800;padding:6px 10px; }
+.albus-dashboard { display:grid;grid-template-columns:minmax(530px,1fr) minmax(320px,380px);gap:19px;align-items:start; }
+.albus-dashboard .calendar { padding:22px; }
+.albus-dashboard .details { min-height:470px;padding:23px;position:sticky;top:14px; }
+.albus-month { display:flex;gap:10px;align-items:center;justify-content:space-between;margin-bottom:18px; }
+.albus-month h2 { margin:0;font-family:Manrope,sans-serif;letter-spacing:-.5px;font-size:18px; }
+.albus-date-grid { display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px; }
+.albus-weekday { display:flex;align-items:center;justify-content:center;font-weight:800;font-size:10px;color:#a6afc0;padding:8px 0; }
+.albus-day { display:flex;flex-direction:column;align-items:stretch;gap:5px;min-height:93px;border:1px solid #eef0f6;border-radius:11px;padding:8px 7px;background:#fff;text-align:left;min-width:0;transition:background .15s,border .15s,box-shadow .15s; }
+.albus-day:hover { border-color:#b8c0ef;background:#fafaff; }
+.albus-day.selected { border-color:#6972db;background:#f3f4ff;box-shadow:0 0 0 1px #6972db30; }
+.albus-day.today .albus-day-number { background:#6874df;color:white;border-radius:7px; }
+.albus-day.drop-on { outline:2px dashed #6772d8;outline-offset:-3px;background:#edf0ff; }
+.albus-day.outside { background:#f9fafe;border-color:transparent;min-height:93px; }
+.albus-day-number { align-self:flex-start;display:grid;place-items:center;width:22px;height:22px;color:#68748b;font-size:11px;font-weight:800; }
+.albus-money { display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:10px;font-weight:800;font-variant-numeric:tabular-nums; }
+.albus-money.in { color:var(--green); }.albus-money.out { color:var(--red); }
+.albus-chip { display:block;max-width:100%;width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:grab;font-size:9px;font-weight:700;color:#5e6488;background:#f2f3fb;border-radius:6px;padding:4px 5px; }
+.albus-chip.event { background:#f1edff;color:#7556a5; }
+.albus-chip.expense { background:#fff2f1;color:#b95660; }
+.albus-chip:active {cursor:grabbing}
+.albus-overflow { font-size:10px;color:#8994ac;font-weight:800;margin-top:auto; }
+.albus-calendar-foot { display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-top:15px;font-size:11px;color:#99a4b7; }
+.albus-day-actions { display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:19px 0 21px; }
+.albus-day-actions button { min-width:0;white-space:normal; }
+.albus-day-actions small { display:block;font-size:10px;font-weight:400;color:#98a4b5;line-height:1.4;margin-top:6px; }
+.albus-detail-heading { display:flex;justify-content:space-between;align-items:flex-start;gap:8px; }
+.albus-detail-heading h2 { margin:4px 0;font-size:18px; }
+.albus-detail-section { margin-top:13px; }
+.albus-detail-section h3 { margin:0 0 9px;font-size:11px;font-weight:800;color:#9aa5b7;text-transform:uppercase;letter-spacing:.65px; }
+.albus-event { border:1px solid #eceaf8;background:#fbfaff;border-radius:12px;padding:12px;margin-bottom:9px; }
+.albus-event-header { display:flex;align-items:center;gap:7px;margin-bottom:6px; }
+.albus-event-title { font-size:12px;font-weight:800;min-width:0;flex:1; }
+.albus-row { display:flex;align-items:center;gap:7px;padding:9px 0;border-top:1px solid #eeeef5;font-size:11px; }
+.albus-row .text { flex:1;min-width:0; }
+.albus-row .caption { color:#9aa5b5;font-size:10px;margin-top:3px; }
+.albus-grip { color:#a5afbd;cursor:grab;flex:none; }
+.albus-grip:hover { color:#5867cb; }
+.albus-entry-price { color:var(--red);font-size:11px;font-weight:800;white-space:nowrap; }
+.albus-entry-price.in { color:var(--green); }
+.albus-tiny-button { border:0;background:#edf0ff;border-radius:7px;padding:6px;color:#616cce;font-size:10px;font-weight:800;white-space:nowrap; }
+.albus-tiny-button.ghost {background:transparent;color:#929bb1}
+.albus-tiny-button:hover { filter:brightness(.97); }
+.albus-details-empty { padding:12px;color:#9da7ba;font-size:12px;line-height:1.5;border:1px dashed #e2e6f1;border-radius:10px;background:#fcfcfe; }
+.albus-help { font-size:11px;color:#8995a7;line-height:1.6;margin:13px 0 0; }
+.albus-modal-backdrop { position:fixed;inset:0;background:rgba(25,33,59,.37);z-index:30;display:flex;justify-content:center;align-items:center;padding:14px; }
+.albus-modal { width:min(500px,100%);max-height:92vh;overflow:auto;background:#fff;border-radius:19px;box-shadow:0 20px 80px #1b21433d;padding:23px; }
+.albus-modal .modal-header { margin-bottom:20px; }
+.albus-modal .field input[type="checkbox"] { width:auto; }
+.albus-modal .notice {line-height:1.5;}
+.albus-modal .field-checkbox { display:flex;align-items:center;gap:8px;font-size:12px;color:#68748d;margin:10px 0 16px; }
+.albus-modal .field-checkbox input {accent-color:#6472d9}
+.albus-modal .hint-inline {padding:10px;border:1px solid #e4e6f7;border-radius:10px;background:#f7f8ff;color:#636e9d;font-size:11px;line-height:1.5;margin-bottom:14px;}
+.albus-modal .form-footer { gap:10px;flex-wrap:wrap; }
+.albus-small {color:#8893a8;font-size:11px;line-height:1.6;}
+.albus-warning {color:#a65446;background:#fff4ee;border:1px solid #f4ddd2;border-radius:9px;padding:10px;font-size:11px;}
+.albus-footer {margin-top:17px;color:#a0a9b9;font-size:11px;line-height:1.6}
+@media (max-width:1140px) {
+ .albus-dashboard{grid-template-columns:minmax(420px,1fr) minmax(290px,330px);gap:12px}
+ .albus-day{min-height:84px;padding:6px 5px}
+ .albus-dashboard .calendar{padding:16px}
+ .albus-summary .summary-card{padding:15px}
+}
+@media (max-width:900px) {
+ .albus-dashboard{grid-template-columns:1fr}
+ .albus-dashboard .details{position:static;min-height:330px}
+ .albus-main{max-width:750px}
+ .albus-top-center{display:none}
+}
+@media (max-width:590px) {
+ .albus-top{min-height:63px;padding:12px 16px}
+ .albus-brand{font-size:20px}
+ .albus-main{padding:20px 12px 40px}
+ .albus-title-row h1{font-size:22px}
+ .albus-actions{width:100%}
+ .albus-actions button{flex:1}
+ .albus-summary{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+ .albus-summary .summary-card{min-height:102px;padding:12px}
+ .albus-summary .summary-value{font-size:18px}
+ .albus-education{flex-direction:column;gap:8px}
+ .albus-dashboard .calendar{padding:13px 8px}
+ .albus-date-grid{gap:3px}
+ .albus-day,.albus-day.outside{min-height:76px;padding:5px 4px;border-radius:7px;gap:3px}
+ .albus-day-number{font-size:10px;width:18px;height:18px}
+ .albus-money{font-size:9px}
+ .albus-chip{font-size:8px;padding:3px}
+ .albus-modal{padding:17px}
+}
