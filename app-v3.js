@@ -3,7 +3,7 @@
 'use strict';
 const E=AlbusEngine,A=AlbusAccess,G=AlbusGoals,M=AlbusMoneyMask,B=AlbusBackup,R=AlbusExpenseReuse;
 const KEY='albus-calendar-local-v1',root=document.getElementById('app');
-const TYPES={event:'Evento',expense:'Despesa',income:'Receita',goal:'Objetivo',task:'Tarefa',reserve:'Aporte / reserva'};
+const TYPES={event:'Evento',expense:'Despesa',income:'Receita',goal:'Objetivo',task:'Tarefa',reserve:'Reserva ou investimento'};
 const CATEGORIES=['Salário','Alimentação','Transporte','Saúde','Moradia','Lazer','Educação','Casa','Pessoal','Outros','Precaução'];
 const SUGGESTIONS={'Salário':['Salário Rodrigo','Salário Danielle','Salário de'],'Transporte':['Transporte para','Transporte de','Uber para'],'Saúde':['Consulta de','Exame de','Medicamento de'],'Moradia':['Aluguel','Condomínio','Energia','Internet'],'Alimentação':['Supermercado','Restaurante'],'Lazer':['Viagem para','Passeio de']};
 const MEMBER=A.DEFAULT_MEMBERS,defaults={profile:'same',view:'cash',closingDay:25,dueDay:5,cardConfigured:false,variationPercent:10,provisionPercent:10,provisionFixedCents:0};
