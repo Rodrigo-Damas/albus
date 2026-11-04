@@ -86,7 +86,7 @@ const AlbusEngine = (function albusEngineFactory() {
     const income=cash.filter(x=>x.entry_type==='income').reduce((a,x)=>a+whole(x.amount_cents),0);
     const expense=expenses.reduce((a,x)=>a+whole(x.amount_cents),0);
     const reserve=cash.filter(x=>x.entry_type==='reserve').reduce((a,x)=>a+whole(x.amount_cents),0);
-    const variable=expenses.filter(x=>x.variable!==false&&x.status!=='paid').reduce((a,x)=>a+whole(x.amount_cents),0);
+    const variable=expenses.filter(x=>x.variable!==false&&x.status!=='paid'&&monthOf(x.occurrence_date)===month).reduce((a,x)=>a+whole(x.amount_cents),0);
     const variation= Math.round(variable*clamp(settings.variationPercent??10,0,100)/100);
     const provision=Math.round(variable*clamp(settings.provisionPercent??10,0,100)/100)+Math.max(0,whole(settings.provisionFixedCents));
     const received=cash.filter(x=>x.entry_type==='income'&&x.status==='received').reduce((a,x)=>a+whole(x.amount_cents),0);
