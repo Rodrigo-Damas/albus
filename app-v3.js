@@ -642,13 +642,27 @@ function confirmPortfolio(itemId,date,amount){
  render();
 }
 function settingsForm(){
- const s=db.settings;
- return modal('Cartão e imprevistos','<form id="settings-form"><div class="field-row"><div class="field"><label>Fechamento</label><input type="number" min="1" max="31" required name="closingDay" value="'+s.closingDay+'"/></div>'+
- '<div class="field"><label>Vencimento</label><input type="number" min="1" max="31" required name="dueDay" value="'+s.dueDay+'"/></div></div>'+
- '<div class="field-row"><div class="field"><label>Variação estimada (%)</label><input type="number" min="0" max="100" required name="variationPercent" value="'+s.variationPercent+'"/></div>'+
- '<div class="field"><label>Imprevistos (%)</label><input type="number" min="0" max="100" required name="provisionPercent" value="'+s.provisionPercent+'"/></div></div>'+
- '<div class="field"><label>Provisão fixa de imprevistos (R$)</label>'+moneyInput('provisionFixed',s.provisionFixedCents||0)+'</div>'+
- '<div class="form-footer">'+button('Cancelar','close','','secondary-button')+' <button type="submit" class="primary-button">Salvar</button></div></form>');
+ const cfg=db.settings;
+ return modal('Configurações do Albus',
+ '<form id="settings-form">'+
+ '<div class="albus-settings-section"><h3>Pagamentos e visualização</h3>'+
+ '<div class="field"><label>Como costuma pagar suas contas?</label><select name="profile">'+
+ options([['same','À vista / no próprio mês'],['credit','Cartão com vencimento posterior']],cfg.profile)+'</select></div>'+
+ '<div class="field"><label>Exibir lançamentos no calendário por</label><select name="view">'+
+ options([['cash','Data do pagamento'],['purchase','Data da compra']],cfg.view)+'</select></div>'+
+ '<p class="albus-small">Por pagamento, compras do cartão aparecem no vencimento da fatura. Por compra, aparecem na data de origem. O resumo financeiro continua baseado nas datas de pagamento.</p></div>'+
+ '<div class="albus-settings-section"><h3>Cartão de crédito</h3><div class="field-row">'+
+ '<div class="field"><label>Dia de fechamento</label><input name="closingDay" type="number" min="1" max="31" value="'+cfg.closingDay+'" required/></div>'+
+ '<div class="field"><label>Dia de vencimento</label><input name="dueDay" type="number" min="1" max="31" value="'+cfg.dueDay+'" required/></div></div></div>'+
+ '<div class="albus-settings-section"><h3>Imprevistos</h3>'+
+ '<div class="field-row"><div class="field"><label>Variação estimada (%)</label>'+
+ '<input name="variationPercent" type="number" min="0" max="100" value="'+cfg.variationPercent+'" required/></div>'+
+ '<div class="field"><label>Provisão de imprevistos (%)</label>'+
+ '<input name="provisionPercent" type="number" min="0" max="100" value="'+cfg.provisionPercent+'" required/></div></div>'+
+ '<div class="field"><label>Provisão fixa de imprevistos (R$)</label>'+
+ moneyInput('provisionFixed',cfg.provisionFixedCents||0)+'</div></div>'+
+ '<div class="form-footer">'+button('Cancelar','close','','secondary-button')+
+ '<button type="submit" class="primary-button">Salvar configurações</button></div></form>');
 }
 function moveForm(m){
  const x=m.kind==='event'?db.events.find(x=>x.id===m.id):db.entries.find(x=>x.id===m.id);
@@ -820,7 +834,12 @@ function submitSettings(ev){
  const f=new FormData(ev.currentTarget),next={...db.settings};
  for(const key of ['closingDay','dueDay']){const n=Number(f.get(key));if(!Number.isInteger(n)||n<1||n>31)throw Error('Dias entre 1 e 31.');next[key]=n;}
  for(const key of ['variationPercent','provisionPercent']){const n=Number(f.get(key));if(!Number.isInteger(n)||n<0||n>100)throw Error('Percentuais entre 0 e 100.');next[key]=n;}
- next.provisionFixedCents=E.parseMoney(f.get('provisionFixed'));next.cardConfigured=true;Object.assign(db.settings,next);state.modal=null;safe();render();
+ next.provisionFixedCents=E.parseMoney(f.get('provisionFixed'));
+ next.profile=String(f.get('profile')||'same');next.view=String(f.get('view')||'cash');
+ if(!['same','credit'].includes(next.profile)||!['cash','purchase'].includes(next.view))throw Error('Configuração inválida.');
+ next.cardConfigured=true;
+ const revised={...db,settings:next};B.save(localStorage,revised);Object.assign(db,revised);
+ state.modal=null;state.message='Configurações atualizadas.';render();
  }catch(e){error(e)}
 }
 function move(kind,itemId,to,silent=false,occurrence=null){
