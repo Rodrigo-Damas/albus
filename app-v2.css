@@ -507,3 +507,95 @@
 .albus-goal-card .albus-goal-priority{color:#6474aa;font-size:10px;font-weight:800;margin-top:3px;}
 .albus-emergency-goal .albus-goal-priority{color:#258b61;}
 @media(max-width:690px){.albus-delete-confirm .form-footer{flex-wrap:wrap;gap:8px;}}
+
+
+/* Calendário como página principal: cards são ações; detalhes aparecem apenas quando chamados. */
+.albus-title-row.albus-compact-head{display:flex;align-items:center;justify-content:space-between;gap:16px;}
+.albus-main-settings{padding:9px 15px;border-radius:11px;border:1px solid #dfe7ef;
+ color:#3c596c;background:#fff;font-size:12px;font-weight:700;white-space:nowrap;cursor:pointer;}
+.albus-main-settings:hover{background:#f0f7f5;}
+.albus-note-compact{font-size:10px;line-height:1.4;padding:7px 10px;opacity:.8;margin-bottom:9px;}
+.albus-financial-card{font:inherit;min-width:0;min-height:0;display:flex;flex-direction:column;
+ text-align:left;align-items:flex-start;border:1px solid #e9edf2;border-radius:12px;
+ background:#fff;cursor:pointer;transition:transform .12s,border-color .12s,box-shadow .12s;}
+.albus-financial-card:hover{transform:translateY(-1px);border-color:#9fbed3;box-shadow:0 5px 16px #21354b1c;}
+.albus-financial-card:focus-visible{outline:2px solid #4b947e;outline-offset:2px;}
+.albus-financial-card .summary-kicker,.albus-financial-card .summary-meta{display:block;}
+.albus-financial-card .summary-value{display:block;}
+.albus-summary-open{display:none;color:#6f8b97;font-size:9px;margin-top:auto;}
+.albus-financial-card:hover .albus-summary-open{display:block;}
+.albus-summary-pending{display:inline-flex;margin-top:4px;font-size:9px;color:#9c6630;
+ background:#fff5e5;border-radius:6px;padding:2px 6px;font-weight:800;}
+.albus-goals{border:1px solid #dfe9e6;border-radius:13px;background:#fff;margin-bottom:13px;overflow:visible;}
+.albus-goals-toggle{display:flex;width:100%;align-items:center;justify-content:space-between;
+ padding:12px 16px;color:#315c50;font-weight:800;background:#f8fcfa;border:0;border-radius:12px;
+ font-size:13px;text-align:left;cursor:pointer;}
+.albus-goals-toggle small{color:#8ca5a0;font-size:10px;font-weight:500;margin-left:7px;}
+.albus-goals.is-open .albus-goals-toggle{border-radius:12px 12px 0 0;border-bottom:1px solid #e4eeeb;}
+.albus-goals-content{padding:12px;}
+.albus-calendar-workspace{display:grid;grid-template-columns:minmax(0,1fr);gap:15px;align-items:start;max-width:100%;}
+.albus-calendar-workspace.has-details{grid-template-columns:minmax(0,1fr) minmax(300px,365px);}
+.albus-calendar-workspace .calendar{min-width:0;padding:18px 20px;}
+.albus-calendar-workspace .details{min-width:0;position:sticky;top:175px;max-height:calc(100dvh - 195px);
+ overflow-y:auto;padding:17px 14px;box-sizing:border-box;}
+.albus-detail-heading{display:flex;align-items:center;justify-content:space-between;gap:10px;}
+.albus-detail-close{display:grid;place-items:center;width:31px;height:31px;border:1px solid #dae2e9;
+ background:#f5f8f9;border-radius:9px;color:#5e7085;cursor:pointer;font-size:20px;}
+.albus-summary-modal-lead{font-size:12px;color:#7e8ca0;margin:0 0 13px;}
+.albus-summary-total{display:flex;align-items:center;justify-content:space-between;
+ border-radius:12px;background:#f5f8fb;padding:14px;margin:10px 0 16px;gap:12px;}
+.albus-summary-total span{font-size:12px;color:#718097;}
+.albus-summary-total strong{font-size:21px;color:#345d55;font-variant-numeric:tabular-nums;}
+.albus-summary-items,.albus-summary-group{display:flex;flex-direction:column;gap:8px;margin:12px 0;}
+.albus-summary-group h3,.albus-modal h3{font-size:13px;color:#405369;margin:11px 0 5px;}
+.albus-summary-row{display:flex;align-items:center;gap:11px;padding:11px;
+ background:#fafbfd;border:1px solid #edf0f4;border-radius:10px;}
+.albus-summary-row-details{flex:1;display:flex;flex-direction:column;gap:4px;min-width:0;}
+.albus-summary-row-details b{font-size:12px;color:#3e5368;overflow-wrap:anywhere;}
+.albus-summary-row-details small{color:#8696a7;font-size:10px;line-height:1.4;}
+.albus-summary-row>strong{color:#364c60;font-size:12px;white-space:nowrap;}
+.albus-summary-modal-actions{display:flex;flex-wrap:wrap;gap:9px;margin:12px 0;}
+.albus-small-confirm{padding:6px 9px;border:0;border-radius:8px;background:#178562;
+ color:#fff;font-size:10px;font-weight:750;cursor:pointer;}
+.albus-small-confirm:hover{background:#116649;}
+.albus-reserve-figures{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;}
+.albus-reserve-figures>span{background:#f6f9fb;border-radius:9px;padding:10px;
+ color:#77869b;font-size:11px;line-height:1.55;}
+.albus-reserve-figures b{color:#38536a;}
+.albus-settings-section{border-bottom:1px solid #e8edf0;padding:8px 0 16px;margin-bottom:14px;}
+.albus-settings-section:last-of-type{border-bottom:0;margin-bottom:6px;}
+/* No celular, resumo compacto 2x2, calendário primeiro, painel do dia abaixo sem lateral fixa. */
+@media(max-width:1100px){
+ .albus-calendar-workspace.has-details{grid-template-columns:minmax(0,1fr) minmax(275px,340px);}
+ .albus-calendar-workspace .calendar{padding:14px 12px;}
+ .albus-calendar-workspace .details{top:145px;max-height:calc(100dvh - 160px);}
+}
+@media(max-width:850px){
+ .albus-calendar-workspace.has-details{grid-template-columns:1fr;}
+ .albus-calendar-workspace .details{position:static;max-height:none;overflow:visible;}
+ .albus-calendar-workspace .calendar{min-height:0;}
+ .albus-financial-sticky{position:sticky;top:0;}
+}
+@media(max-width:590px){
+ .albus-main-settings{padding:8px 10px;font-size:10px;}
+ .albus-note-compact{display:none;}
+ .albus-financial-card .summary-kicker{font-size:10px;}
+ .albus-financial-card .summary-value{font-size:15px;}
+ .albus-summary-open{display:none!important;}
+ .albus-goals-toggle{padding:11px;font-size:12px;}
+ .albus-goals-content{padding:9px;}
+ .albus-calendar-workspace .calendar{padding:10px 7px;}
+ .albus-calendar-workspace .albus-day{min-height:73px;padding:5px 3px;gap:3px;}
+ .albus-calendar-workspace .albus-day-number{font-size:10px;}
+ .albus-calendar-workspace .albus-money{font-size:9px;line-height:1.2;overflow-wrap:anywhere;}
+ .albus-calendar-workspace .albus-chip{font-size:9px;max-width:100%;overflow:hidden;text-overflow:ellipsis;}
+ .albus-summary-row{flex-wrap:wrap;}
+ .albus-summary-row>strong{font-size:11px;}
+ .albus-reserve-figures{grid-template-columns:1fr 1fr;}
+ .albus-financial-sticky .albus-compact-summary .summary-card{min-height:60px;}
+}
+@media(max-width:380px){
+ .albus-calendar-workspace .albus-day{min-height:66px;padding:3px 2px;}
+ .albus-calendar-workspace .albus-chip{font-size:8px;}
+ .albus-main-settings{font-size:9px;padding:7px;}
+}
