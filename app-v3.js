@@ -295,7 +295,8 @@ function calendar(){
  goalMilestones(date)+'</div>');
  }
  return '<article class="surface calendar"><div class="albus-month"><div><h2>'+esc(monthTitle(state.month))+'</h2><div class="albus-small">Selecione o dia. Arraste itens para outra data.</div></div>'+
- '<div class="albus-month-actions">'+button('Hoje','today','','outline-button albus-calendar-today')+button('‹','previous','','icon-button')+button('›','next','','icon-button')+'</div></div>'+
+ '<div class="albus-month-actions">'+button('Conferir mês','review-month','','outline-button albus-month-review')+
+ button('Hoje','today','','outline-button albus-calendar-today')+button('‹','previous','','icon-button')+button('›','next','','icon-button')+'</div></div>'+
  '<div class="albus-date-grid">'+['DOM','SEG','TER','QUA','QUI','SEX','SÁB'].map(x=>'<div class="albus-weekday">'+x+'</div>').join('')+out.join('')+
  '</div><div class="albus-calendar-foot"><span>Verde: entradas · Vermelho: pagamentos</span><span>Arraste para reagendar</span></div></article>';
 }
@@ -547,6 +548,28 @@ function confirmGoalDeletion(m){
  '<div class="form-footer">'+button('Cancelar','cancel-goal-delete','','secondary-button')+
  button('Sim, excluir caixinha','approve-goal-delete','data-id="'+esc(goal.id)+'"','primary-button albus-danger-confirm')+'</div></div>');
 }
+function monthReviewOverview(){
+ const rows=cashRows(state.month,'cash').filter(x=>x.display_date<=today()&&
+  ['income','expense','reserve'].includes(x.entry_type));
+ const scheduled=rows.filter(x=>!Z.isReconciled(x));
+ const completed=rows.filter(x=>Z.isReconciled(x));
+ const group=(name,items)=>
+  '<div class="albus-summary-group"><h3>'+name+' · '+items.length+'</h3>'+
+  (items.length?items.map(x=>'<div class="albus-summary-row">'+
+   '<span class="albus-summary-row-details"><b>'+esc(x.title)+'</b>'+
+   '<small>'+fmt(x.display_date)+' · '+(Z.isReconciled(x)?'Realizado':'A conferir')+
+   (Z.isReconciled(x)?' · Planejado '+mny(x.planned_amount_cents??x.amount_cents):'')+'</small></span>'+
+   '<strong>'+mny(x.amount_cents)+'</strong>'+
+   (x.virtual_portfolio?button('Atualizar reserva','review-reserves','','albus-small-confirm'):
+    ['expense','income'].includes(x.entry_type)?button('Atualizar','reconcile-entry',
+    'data-id="'+esc(x.id)+'" data-occurrence="'+esc(x.occurrence_date||x.entry_date)+'"','albus-small-confirm'):'')+
+   '</div>').join(''):'<p class="albus-small">Nenhum lançamento nesta situação.</p>')+'</div>';
+ return modal('Conferir planejamento · '+monthTitle(state.month),
+ '<p class="albus-small">Compare os valores previstos com o que realmente aconteceu. Atualize os lançamentos vencidos; os próximos dias continuam planejados.</p>'+
+ group('A conferir',scheduled)+group('Realizados',completed)+
+ '<div class="form-footer">'+button('Voltar ao calendário','close','','secondary-button')+
+ button('Atualizar reservas','review-reserves','','primary-button')+'</div>');
+}
 function reconciliationEntryForm(m){
  const src=db.entries.find(x=>x.id===m.id);
  if(!src)return '';
@@ -782,6 +805,7 @@ function render(){
  '<div class="albus-footer"><b>Entenda o mês:</b> receitas previstas financiam pagamentos com vencimento neste mês, inclusive faturas de compras anteriores. Compras no cartão para meses futuros: '+mny(s.futureCard)+'. Sem duplicidade.</div>'+
  '</main>'+(
  state.modal?.type==='monthly-summary'?monthlySummaryModal(state.modal):
+ state.modal?.type==='review-month'?monthReviewOverview():
  state.modal?.type==='reconcile-entry'?reconciliationEntryForm(state.modal):
  state.modal?.type==='review-reserves'?monthlyGoalReviewForm(state.modal):
  state.modal?.type==='entry'?entryForm(state.modal):
@@ -1000,6 +1024,7 @@ function bind(){
   if(action==='close-details'){state.detailsOpen=false;state.createOpen=false;return render()}
   if(action==='summary')return open('monthly-summary',{kind});
   if(action==='review-reserves')return open('review-reserves');
+  if(action==='review-month')return open('review-month');
   if(action==='reconcile-entry')return open('reconcile-entry',{id:item,occurrence:el.dataset.occurrence||state.day});
   if(action==='toggle-goals'){state.goalsOpen=!state.goalsOpen;return render()}
   if(action==='open-goals'){state.goalsOpen=true;state.modal=null;return render()}
