@@ -80,16 +80,19 @@ function project(g){
  return G.forecast(g,db.entries,state.cdi,E.monthOf(today()),db.overrides);
 }
 function showGoalCard(g){
- const f=project(g),percent=Math.min(100,Math.max(0,f.progress)),priority=H.isEmergency(g);
- const waiting=P.active(db.settings)&&!plan().results.get(E.monthOf(today()))?.some(x=>x.goal_id===g.id)&&!reachedTarget(g);
- function reachedTarget(goal){return G.realBalance(goal,db.entries,db.overrides)>=goal.target_cents;}
- const reached=percent>=100;
- return '<button class="albus-goal-card'+(priority?' albus-emergency-goal':'')+'" data-action="goal-details" data-id="'+esc(g.id)+'">'+
- '<span class="albus-goal-label">'+(priority?'♧ Reserva de emergência':'◈ '+esc(g.title))+'</span>'+
+ const f=project(g),percent=Math.min(100,Math.max(0,f.progress)),emergency=H.isEmergency(g);
+ const reached=percent>=100,ordered=P.ordered(db.goals),position=ordered.findIndex(x=>x.id===g.id)+1;
+ const monthly=plan()?.results.get(state.month)||[];
+ const available=monthly.filter(x=>x.goal_id===g.id).reduce((sum,x)=>sum+x.amount_cents,0);
+ return '<button class="albus-goal-card'+(emergency?' albus-emergency-goal':'')+'" data-action="goal-details" data-id="'+esc(g.id)+'">'+
+ '<span class="albus-goal-label">'+(emergency?'♧ Reserva de emergência':'◈ '+esc(g.title))+'</span>'+
  '<strong>'+mny(f.actual)+'</strong><span class="albus-goal-hint">de '+mny(f.target)+' · '+Math.round(percent)+'%</span>'+
  '<span class="albus-progress"><span style="width:'+percent+'%"></span></span>'+
- '<small>'+(reached?'Meta alcançada · crie novos objetivos':waiting?'Aguardando objetivo anterior':'Aporte desejado: '+mny(f.monthly)+'/mês')+'</small>'+
- (f.estimatedMonth&&!reached?'<small>Previsão: '+esc(monthTitle(f.estimatedMonth))+'</small>':'')+'</button>';
+ '<small>Aporte definido: '+mny(f.monthly)+'/mês</small>'+
+ '<small class="albus-goal-possible">Aporte possível em '+esc(monthTitle(state.month))+': '+mny(available)+'</small>'+
+ (f.estimatedMonth&&!reached?'<small>Previsão: '+esc(monthTitle(f.estimatedMonth))+'</small>':
+ reached?'<small>Meta concluída</small>':'<small>Previsão indisponível</small>')+
+ '<small class="albus-goal-priority">Prioridade '+position+(emergency?' · fixa':'')+'</small></button>';
 }
 function goalCards(){
  const listed=P.ordered(goals());
