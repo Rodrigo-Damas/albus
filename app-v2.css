@@ -625,3 +625,18 @@
  .albus-reconcile-action{font-size:9px;}
 }
 @media(max-width:380px){.albus-review-goal{grid-template-columns:1fr;}}
+
+/* Cabeçalho do calendário: Conferir mês é acessível também em telas estreitas. */
+.albus-month-actions{display:flex;align-items:center;justify-content:flex-end;flex-wrap:wrap;gap:6px;}
+.albus-month-review{background:#eaf7f1;border:1px solid #b7ddca;color:#176a50;
+ font-weight:750;white-space:nowrap;}
+.albus-month-review:hover{background:#dbf0e4;}
+@media(max-width:590px){
+ .albus-month-actions{gap:4px;}
+ .albus-month-review{font-size:10px;padding:7px 8px;}
+ .albus-month-actions .icon-button{min-width:28px;}
+}
+@media(max-width:390px){
+ .albus-month-review{font-size:9px;padding:6px;}
+ .albus-month-actions{justify-content:flex-start;}
+}
