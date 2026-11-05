@@ -228,3 +228,18 @@ Validação: testes `tests/goal-balance-and-confirmation.test.cjs` mais verifica
 - **Compatibilidade:** a chave local `albus-calendar-local-v1` não foi alterada; funcionalidades existentes de exportação e importação continuam disponíveis. A PR #3 segue sem merge e produção sem alterações.
 
 Teste adicional: `tests/calendar-first-mvp.test.cjs`. Renderização isolada validada para o calendário, os quatro cards, resumos, configurações e dados persistidos.
+
+## Planejado x realizado: conferência do mês (05/11/2026)
+
+**Objetivo:** a pessoa define os valores e as datas de receitas, despesas e objetivos antes de começar o mês; após a data prevista, o Albus pede que ela confira **o que realmente aconteceu**, sem criar uma segunda despesa ou uma segunda reserva.
+
+- **Conferir mês** na barra do calendário abre os lançamentos com data vencida e os já realizados. Cada despesa/receita pode ser atualizada pelo detalhamento do dia ou pelo resumo correspondente.
+- **Atualizar realizado** de uma receita/despesa sugere o valor previsto e permite registrar o valor real, a data efetiva e a opção de não ter ocorrido. O valor e a data planejados continuam disponíveis. Para lançamentos mensais recorrentes, grava-se um `override` somente daquela ocorrência; futuras parcelas não são alteradas.
+- **Atualizar realizado** em **Reservas, objetivos e imprevistos** abre um formulário mensal com os aportes vencidos, preenchidos inicialmente com o planejamento. A pessoa informa o valor efetivamente guardado (inclusive R$ 0). Pode reabrir o mesmo mês para corrigir os dados.
+- Cada objetivo possui **no máximo uma conciliação mensal da fila**. A segunda edição altera a conciliação existente em vez de criar outro lançamento. Confirmar valor inferior ao previsto não faz reaparecer um segundo aporte para a mesma caixinha naquele mês; eventual sobra do limite pode ir para a próxima prioridade.
+- A implementação usa `reconciliation.js` e grava `realized_amount_cents`, `realized_date`, `reconciliation_state`, `planned_amount_cents` e `goal_reconciliation_month` no armazenamento existente. `engine.js` usa o realizado nos totais, mas preserva a previsão para comparação. O modelo de objetivos usa apenas aportes realizados para compor o saldo real.
+- O antigo botão **Registrar aporte** deixa de ser oferecido; não há mais a criação manual recorrente de aportes por esse fluxo. A reconciliação de uma reserva antiga registrada uma única vez atualiza aquele mesmo lançamento. Registros históricos múltiplos não são apagados automaticamente, pois podem representar transferências legítimas; devem ser analisados antes de qualquer correção.
+- **Calendário:** datas vencidas mostram o selo discreto **A conferir**. O painel de detalhamento do dia fica alinhado ao topo da grade, sem acompanhar a rolagem. **Conferir mês** e o painel de atualização são responsivos no celular.
+- Chave do armazenamento `albus-calendar-local-v1`, cópia anterior e importação/exportação intactos. Nenhuma migração destrutiva e nenhuma alteração em `main`.
+
+Testes: `tests/reconciliation-monthly.test.cjs` cobre valores divergentes, recorrências, repetição da mesma confirmação, aporte zero e dados anteriores; `tests/calendar-first-mvp.test.cjs`, `tests/priority-budget.test.cjs` e `tests/sticky-summary.test.cjs` foram atualizados. Ainda é necessária validação visual manual no navegador e no celular.
