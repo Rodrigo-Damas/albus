@@ -331,7 +331,10 @@ function goalForm(m){
  const existing=db.goals.find(x=>x.id===m.id),old=existing||{};
  const isEmergency=H.isEmergency(old)||(!existing&&m.kind==='emergency');
  const suggested=H.recommendedCost(E,entries(),db.overrides,E.monthOf(today()),'essential');
- const cost=old.monthly_cost_cents??suggested.cents;
+ const suggestedIncome=H.recommendedIncome(E,entries(),db.overrides,E.monthOf(today()));
+ const revision=m.review===true;
+ const cost=revision&&suggested.months?suggested.cents:(old.monthly_cost_cents??suggested.cents);
+ const income=revision&&suggestedIncome.months?suggestedIncome.cents:(old.income_reference_cents??suggestedIncome.cents);
  const months=old.coverage_months||6;
  const suggestedDate=H.suggestedContributionDate(E,entries(),db.overrides,E.monthOf(state.day));
  const goalDate=old.contribution_date||suggestedDate||state.day;
@@ -344,12 +347,14 @@ function goalForm(m){
  (emergencyExists?'<div class="albus-small">Já existe uma reserva de emergência. Você pode editar a atual ou criar outro objetivo.</div>':'')+
  '<section id="emergency-fields" class="albus-emergency-fields">'+
  '<div class="albus-warning">Primeiro objetivo sugerido: construa uma reserva para cobrir suas despesas essenciais em caso de imprevistos ou perda de renda.</div>'+
- '<div class="field-row"><div class="field"><label>Receita mensal da família (referência)</label>'+moneyInput('income_reference',old.income_reference_cents??summary().income)+'</div>'+
+ '<div class="field-row"><div class="field"><label>Receita mensal da família (referência)</label>'+moneyInput('income_reference',income)+'</div>'+
  '<div class="field"><label>Custo mensal usado na reserva</label>'+moneyInput('monthly_cost',cost)+'</div></div>'+
  '<div class="field"><label>Período de cobertura</label><select name="coverage_months" id="coverage-months">'+
  options([[6,'6 meses'],[12,'12 meses'],[18,'18 meses'],[24,'24 meses']],months)+'</select></div>'+
- '<div class="albus-small">Sugestão de custo: '+mny(suggested.cents)+
- ' ('+suggested.source+'). Estimativa baseada nas despesas essenciais cadastradas; revise se ainda faltam lançamentos.</div>'+
+ '<div class="albus-small"><b>Receita sugerida:</b> '+mny(suggestedIncome.cents)+' · '+esc(suggestedIncome.source)+
+ '. <b>Custo essencial sugerido:</b> '+mny(suggested.cents)+' · '+esc(suggested.source)+'. '+
+ (suggested.months>1?'Estimativa conservadora: 70% da média + 30% do mês mais caro. ':'')+
+ 'Os meses com lançamentos podem estar incompletos. Confirme os valores antes de salvar. O mês atual só serve como referência provisória quando não há histórico anterior.</div>'+
  '</section>'+
  '<div class="field-row"><div class="field"><label>Meta total (R$)</label>'+moneyInput('target',old.target_cents||(isEmergency?cost*months:0),'required')+'</div>'+
  '<div class="field"><label>Saldo inicial real (R$)</label>'+moneyInput('initial',old.initial_cents||0)+'</div></div>'+
@@ -389,7 +394,33 @@ function goalDetails(m){
  '<p>'+ (reached?'Meta concluída':'Conclusão projetada')+': <b>'+(reached?'100% alcançados':f.estimatedMonth?monthTitle(f.estimatedMonth):'Indefinida')+'</b></p></div>'+
  (reached?'<div class="albus-success-goal">Reserva concluída. Considere começar outro objetivo e continue revisando suas despesas e o saldo da reserva.</div>':'')+
  '<p class="albus-small">A projeção não acrescenta rendimentos ao saldo real. Atualize periodicamente o saldo segundo os rendimentos reais do banco ou fundo. Impostos e taxas não são considerados.</p>'+
- '<div class="form-footer">'+button('Editar','edit-goal','data-id="'+esc(goal.id)+'"','secondary-button')+button('+ Registrar aporte','add-contribution','data-id="'+esc(goal.id)+'"','primary-button')+'</div>');
+ '<div class="form-footer">'+(H.isEmergency(goal)?button('Atualizar reserva de emergência','review-emergency','data-id="'+esc(goal.id)+'"','secondary-button'):'')+
+ button('Editar','edit-goal','data-id="'+esc(goal.id)+'"','secondary-button')+button('+ Registrar aporte','add-contribution','data-id="'+esc(goal.id)+'"','primary-button')+'</div>');
+}
+function emergencyReview(m){
+ const goal=db.goals.find(x=>x.id===m.id);
+ if(!goal||!H.isEmergency(goal))return '';
+ const month=E.monthOf(today());
+ const cost=H.recommendedCost(E,entries(),db.overrides,month,'essential');
+ const revenue=H.recommendedIncome(E,entries(),db.overrides,month);
+ const capacity=H.contributionCapacity(E,entries(),db.overrides,month,goal.id,db.settings);
+ const suggestedGoal=cost.months?H.emergencyTarget(cost.cents,goal.coverage_months||6):null;
+ const showSamples=(data,label)=>'<div class="albus-review-basis"><strong>'+label+'</strong><span>'+esc(data.source)+'</span>'+
+ (data.samples.length?data.samples.map(x=>'<span>'+esc(monthTitle(x.month))+': '+mny(x.cents)+'</span>').join(''):'<span>Sem dados suficientes: preencha manualmente.</span>')+'</div>';
+ return modal('Atualizar reserva de emergência',
+ '<div class="albus-warning">Esta revisão utiliza até três meses anteriores com lançamentos. Isso não garante que todos os gastos ou recebimentos tenham sido cadastrados. Nenhuma alteração será salva sem sua confirmação.</div>'+
+ '<div class="albus-review-columns"><div><small>Custo essencial atual</small><strong>'+mny(goal.monthly_cost_cents||0)+'</strong></div>'+
+ '<div><small>Nova sugestão de custo</small><strong>'+ (cost.months?mny(cost.cents):'Sem histórico')+'</strong></div>'+
+ '<div><small>Receita cadastrada como referência</small><strong>'+mny(goal.income_reference_cents||0)+'</strong></div>'+
+ '<div><small>Nova sugestão de receita</small><strong>'+(revenue.months?mny(revenue.cents):'Sem histórico')+'</strong></div>'+
+ '<div><small>Meta atual</small><strong>'+mny(goal.target_cents||0)+'</strong></div>'+
+ '<div><small>Nova meta sugerida</small><strong>'+(suggestedGoal!==null?mny(suggestedGoal):'Sem histórico')+'</strong></div></div>'+
+ showSamples(cost,'Despesas essenciais consideradas')+showSamples(revenue,'Receitas consideradas')+
+ '<p class="albus-small">Custo: com dois ou três meses, 70% da média + 30% do maior mês. Receita: média simples. Com um mês, usa-se esse mês; sem histórico, os valores precisam ser preenchidos manualmente.</p>'+
+ '<div class="albus-review-capacity"><b>Margem mensal estimada para aportes: '+(capacity.cents===null?'Não disponível':mny(capacity.cents))+'</b>'+
+ '<span>Margem calculada com receitas, despesas totais, outras reservas e imprevistos. É uma referência, não uma promessa de disponibilidade nem uma alteração automática no aporte.</span></div>'+
+ '<div class="form-footer">'+button('Cancelar','close','','secondary-button')+
+ button('Revisar meta e aporte','apply-emergency-review','data-id="'+esc(goal.id)+'"','primary-button')+'</div>');
 }
 function contributionForm(m){
  const goal=db.goals.find(x=>x.id===m.id);if(!goal)return '';
@@ -483,6 +514,7 @@ function render(){
  state.modal?.type==='event-expense'?eventForm({id:state.eventSession?.id,date:state.eventSession?.draft?.date})+eventExpenseForm():
  state.modal?.type==='goal'?goalForm(state.modal):
  state.modal?.type==='goal-details'?goalDetails(state.modal):
+ state.modal?.type==='emergency-review'?emergencyReview(state.modal):
  state.modal?.type==='contribution'?contributionForm(state.modal):
  state.modal?.type==='settings'?settingsForm():
  state.modal?.type==='move'?moveForm(state.modal):
@@ -707,6 +739,8 @@ function bind(){
   }
   if(action==='settings')return open('settings');
   if(action==='goal-details')return open('goal-details',{id:item});
+  if(action==='review-emergency')return open('emergency-review',{id:item});
+  if(action==='apply-emergency-review')return open('goal',{id:item,review:true});
   if(action==='edit-goal')return open('goal',{id:item});
   if(action==='add-contribution')return open('contribution',{id:item});
   if(action==='edit-entry')return open('entry',{id:item,occurrence:el.dataset.occurrence||state.day});
