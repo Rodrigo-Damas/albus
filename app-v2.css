@@ -1,0 +1,642 @@
+
+/* Albus v2: preserva tipografia, cores e cartões da versão anterior. */
+:root { --paper:#fff; --line:#ebedf3; --ink:#1e2638; --muted:#8691a6; --blue:#5964d8; --green:#169c72; --red:#df5e62; }
+.albus-shell { min-height:100vh; background:#f7f8fc; }
+.albus-top { display:flex;align-items:center;justify-content:space-between;gap:18px;min-height:80px;padding:17px clamp(18px,4vw,58px);background:white;border-bottom:1px solid var(--line); }
+.albus-brand { display:flex;align-items:center;gap:11px;font-family:Manrope,sans-serif;font-size:23px;font-weight:800;letter-spacing:-1px; }
+.albus-brand .brand-icon { background:#5e68df; }
+.albus-top-center { color:#646c90;font-weight:700;font-size:13px; }
+.albus-top-right { display:flex;align-items:center;gap:9px;color:#7a859c;font-weight:700;font-size:12px; }
+.albus-main { max-width:1430px;margin:0 auto;padding:34px clamp(14px,3vw,42px) 60px; }
+.albus-title-row { display:flex;align-items:center;justify-content:space-between;gap:15px;margin-bottom:22px;flex-wrap:wrap; }
+.albus-eyebrow { color:#949fc3;font-size:10px;letter-spacing:1.2px;font-weight:800;text-transform:uppercase; }
+.albus-title-row h1 { font-family:Manrope,sans-serif;margin:5px 0 6px;font-size:25px;letter-spacing:-.8px; }
+.albus-subtitle { font-size:13px;color:#8691a6;margin:0;line-height:1.5; }
+.albus-actions { display:flex;gap:9px;align-items:center;flex-wrap:wrap; }
+.albus-actions .primary-button { padding:12px 15px; }
+.albus-note { color:#76663f;background:#fffaf0;border:1px solid #f2e8cd;border-radius:11px;padding:11px 14px;font-size:12px;line-height:1.5;margin-bottom:19px;display:flex;gap:9px;align-items:flex-start; }
+.albus-note svg { color:#c09548;flex:none; }
+.albus-settings-row { display:flex;gap:18px;align-items:end;justify-content:space-between;flex-wrap:wrap;margin-bottom:20px;padding:15px 18px;border-radius:14px;background:#fff;border:1px solid #eceef5; }
+.albus-settings-row .setting { display:flex;flex-direction:column;gap:5px;min-width:230px;flex:1; }
+.albus-settings-row label { color:#77839a;font-size:11px;font-weight:800; }
+.albus-settings-row select { padding:9px 12px;border:1px solid #e0e5f0;border-radius:9px;background:white;color:#27344b;font-size:13px;font-weight:700;width:100%; }
+.albus-settings-row small { font-size:10px;color:#8d98ad; }
+.albus-settings-row .setting-button { margin-bottom:1px; }
+.albus-summary { display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:13px;margin-bottom:17px; }
+.albus-summary .summary-card { padding:18px 18px 16px;min-height:111px; }
+.albus-summary .summary-value { font-size:clamp(17px,1.8vw,22px); }
+.albus-summary .summary-card.balance .summary-value { color:var(--red); }
+.albus-summary .summary-card.balance.zero .summary-value { color:var(--green); }
+.albus-summary .summary-card.balance.negative .summary-value { color:#c23a46; }
+.albus-education { display:flex;align-items:flex-start;gap:13px;justify-content:space-between;margin-bottom:23px;padding:13px 16px;background:#f0f2fe;border:1px solid #e3e7fa;border-radius:12px;color:#5b6697; }
+.albus-education p { margin:0;font-size:12px;line-height:1.6; }
+.albus-education strong { color:#3c4886; }
+.albus-education .pill { flex:none;display:inline-flex;border-radius:20px;background:#fff;color:#656f9f;font-size:10px;font-weight:800;padding:6px 10px; }
+.albus-dashboard { display:grid;grid-template-columns:minmax(530px,1fr) minmax(320px,380px);gap:19px;align-items:start; }
+.albus-dashboard .calendar { padding:22px; }
+.albus-dashboard .details { min-height:470px;padding:23px;position:sticky;top:14px; }
+.albus-month { display:flex;gap:10px;align-items:center;justify-content:space-between;margin-bottom:18px; }
+.albus-month h2 { margin:0;font-family:Manrope,sans-serif;letter-spacing:-.5px;font-size:18px; }
+.albus-date-grid { display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px; }
+.albus-weekday { display:flex;align-items:center;justify-content:center;font-weight:800;font-size:10px;color:#a6afc0;padding:8px 0; }
+.albus-day { display:flex;flex-direction:column;align-items:stretch;gap:5px;min-height:93px;border:1px solid #eef0f6;border-radius:11px;padding:8px 7px;background:#fff;text-align:left;min-width:0;transition:background .15s,border .15s,box-shadow .15s; }
+.albus-day:hover { border-color:#b8c0ef;background:#fafaff; }
+.albus-day.selected { border-color:#6972db;background:#f3f4ff;box-shadow:0 0 0 1px #6972db30; }
+.albus-day.today .albus-day-number { background:#6874df;color:white;border-radius:7px; }
+.albus-day.drop-on { outline:2px dashed #6772d8;outline-offset:-3px;background:#edf0ff; }
+.albus-day.outside { background:#f9fafe;border-color:transparent;min-height:93px; }
+.albus-day-number { align-self:flex-start;display:grid;place-items:center;width:22px;height:22px;color:#68748b;font-size:11px;font-weight:800; }
+.albus-money { display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:10px;font-weight:800;font-variant-numeric:tabular-nums; }
+.albus-money.in { color:var(--green); }.albus-money.out { color:var(--red); }
+.albus-chip { display:block;max-width:100%;width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:grab;font-size:9px;font-weight:700;color:#5e6488;background:#f2f3fb;border-radius:6px;padding:4px 5px; }
+.albus-chip.event { background:#f1edff;color:#7556a5; }
+.albus-chip.expense { background:#fff2f1;color:#b95660; }
+.albus-chip:active {cursor:grabbing}
+.albus-overflow { font-size:10px;color:#8994ac;font-weight:800;margin-top:auto; }
+.albus-calendar-foot { display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-top:15px;font-size:11px;color:#99a4b7; }
+.albus-day-actions { display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:19px 0 21px; }
+.albus-day-actions button { min-width:0;white-space:normal; }
+.albus-day-actions small { display:block;font-size:10px;font-weight:400;color:#98a4b5;line-height:1.4;margin-top:6px; }
+.albus-detail-heading { display:flex;justify-content:space-between;align-items:flex-start;gap:8px; }
+.albus-detail-heading h2 { margin:4px 0;font-size:18px; }
+.albus-detail-section { margin-top:13px; }
+.albus-detail-section h3 { margin:0 0 9px;font-size:11px;font-weight:800;color:#9aa5b7;text-transform:uppercase;letter-spacing:.65px; }
+.albus-event { border:1px solid #eceaf8;background:#fbfaff;border-radius:12px;padding:12px;margin-bottom:9px; }
+.albus-event-header { display:flex;align-items:center;gap:7px;margin-bottom:6px; }
+.albus-event-title { font-size:12px;font-weight:800;min-width:0;flex:1; }
+.albus-row { display:flex;align-items:center;gap:7px;padding:9px 0;border-top:1px solid #eeeef5;font-size:11px; }
+.albus-row .text { flex:1;min-width:0; }
+.albus-row .caption { color:#9aa5b5;font-size:10px;margin-top:3px; }
+.albus-grip { color:#a5afbd;cursor:grab;flex:none; }
+.albus-grip:hover { color:#5867cb; }
+.albus-entry-price { color:var(--red);font-size:11px;font-weight:800;white-space:nowrap; }
+.albus-entry-price.in { color:var(--green); }
+.albus-tiny-button { border:0;background:#edf0ff;border-radius:7px;padding:6px;color:#616cce;font-size:10px;font-weight:800;white-space:nowrap; }
+.albus-tiny-button.ghost {background:transparent;color:#929bb1}
+.albus-tiny-button:hover { filter:brightness(.97); }
+.albus-details-empty { padding:12px;color:#9da7ba;font-size:12px;line-height:1.5;border:1px dashed #e2e6f1;border-radius:10px;background:#fcfcfe; }
+.albus-help { font-size:11px;color:#8995a7;line-height:1.6;margin:13px 0 0; }
+.albus-modal-backdrop { position:fixed;inset:0;background:rgba(25,33,59,.37);z-index:30;display:flex;justify-content:center;align-items:center;padding:14px; }
+.albus-modal { width:min(500px,100%);max-height:92vh;overflow:auto;background:#fff;border-radius:19px;box-shadow:0 20px 80px #1b21433d;padding:23px; }
+.albus-modal .modal-header { margin-bottom:20px; }
+.albus-modal .field input[type="checkbox"] { width:auto; }
+.albus-modal .notice {line-height:1.5;}
+.albus-modal .field-checkbox { display:flex;align-items:center;gap:8px;font-size:12px;color:#68748d;margin:10px 0 16px; }
+.albus-modal .field-checkbox input {accent-color:#6472d9}
+.albus-modal .hint-inline {padding:10px;border:1px solid #e4e6f7;border-radius:10px;background:#f7f8ff;color:#636e9d;font-size:11px;line-height:1.5;margin-bottom:14px;}
+.albus-modal .form-footer { gap:10px;flex-wrap:wrap; }
+.albus-small {color:#8893a8;font-size:11px;line-height:1.6;}
+.albus-warning {color:#a65446;background:#fff4ee;border:1px solid #f4ddd2;border-radius:9px;padding:10px;font-size:11px;}
+.albus-footer {margin-top:17px;color:#a0a9b9;font-size:11px;line-height:1.6}
+@media (max-width:1140px) {
+ .albus-dashboard{grid-template-columns:minmax(420px,1fr) minmax(290px,330px);gap:12px}
+ .albus-day{min-height:84px;padding:6px 5px}
+ .albus-dashboard .calendar{padding:16px}
+ .albus-summary .summary-card{padding:15px}
+}
+@media (max-width:900px) {
+ .albus-dashboard{grid-template-columns:1fr}
+ .albus-dashboard .details{position:static;min-height:330px}
+ .albus-main{max-width:750px}
+ .albus-top-center{display:none}
+}
+@media (max-width:590px) {
+ .albus-top{min-height:63px;padding:12px 16px}
+ .albus-brand{font-size:20px}
+ .albus-main{padding:20px 12px 40px}
+ .albus-title-row h1{font-size:22px}
+ .albus-actions{width:100%}
+ .albus-actions button{flex:1}
+ .albus-summary{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+ .albus-summary .summary-card{min-height:102px;padding:12px}
+ .albus-summary .summary-value{font-size:18px}
+ .albus-education{flex-direction:column;gap:8px}
+ .albus-dashboard .calendar{padding:13px 8px}
+ .albus-date-grid{gap:3px}
+ .albus-day,.albus-day.outside{min-height:76px;padding:5px 4px;border-radius:7px;gap:3px}
+ .albus-day-number{font-size:10px;width:18px;height:18px}
+ .albus-money{font-size:9px}
+ .albus-chip{font-size:8px;padding:3px}
+ .albus-modal{padding:17px}
+}
+
+/* Refinamentos do bloco familiar: impede que os marcadores decorativos cubram títulos. */
+.albus-summary .summary-card::after { width:26px;height:26px;right:14px;top:14px;opacity:.48;pointer-events:none;z-index:0; }
+.albus-summary .summary-kicker { position:relative;z-index:1;padding-right:27px;line-height:1.4;white-space:normal;overflow-wrap:anywhere;min-height:34px;font-size:11px; }
+.albus-summary .summary-value,.albus-summary .summary-meta { position:relative;z-index:1; }
+.albus-top-right select { border:1px solid #e0e4f1;border-radius:9px;padding:8px 9px;background:#fff;color:#4f5b7f;font-size:12px;font-weight:700; }
+.albus-family-pill { display:inline-flex;border-radius:20px;padding:7px 10px;background:#eef1fe;color:#5c65a8;white-space:nowrap; }
+.albus-owner-filter { flex:0 1 240px; }
+.albus-owner-fields { padding:13px 13px 2px;margin:12px 0 14px;border:1px solid #e8ebf5;border-radius:12px;background:#fafbff; }
+.albus-owner-fields small {display:block;color:#9099ac;font-size:10px;line-height:1.5;margin:5px 0;}
+.albus-member-options { display:flex;gap:10px;flex-wrap:wrap; }
+.albus-member-choice { display:flex;gap:7px;align-items:center;padding:10px 12px;border:1px solid #e3e6ef;background:#fff;border-radius:9px;font-size:12px;font-weight:700;color:#5b6680;cursor:pointer; }
+.albus-member-choice input {width:auto!important;accent-color:#6670d5;}
+.albus-member-choice:has(input:checked) { background:#f0f2ff;border-color:#bfc5f3;color:#5661bd; }
+.albus-suggestions {display:flex;align-items:center;flex-wrap:wrap;gap:6px;margin-top:8px;}
+.albus-suggestions button {border:1px solid #e7e9f6;background:#f6f7ff;color:#6771a4;font-size:10px;padding:7px 9px;border-radius:20px;font-weight:700;}
+.albus-suggestions button:hover {background:#e9edfc;}
+.albus-day-actions {grid-template-columns:repeat(3,minmax(0,1fr));}
+.albus-day-actions .outline-button,.albus-day-actions .primary-button { padding:10px 6px;gap:4px;font-size:10px; }
+.albus-day-actions svg { width:14px;height:14px; }
+.albus-day-actions small {font-size:9px;}
+@media(max-width:900px){
+ .albus-top-right {flex-wrap:wrap;justify-content:flex-end;}
+ .albus-summary .summary-kicker {min-height:30px;}
+}
+@media(max-width:590px){
+ .albus-top-right label {display:none;}
+ .albus-family-pill {display:none;}
+ .albus-top-right select {max-width:110px;}
+ .albus-summary .summary-card::after {width:20px;height:20px;right:9px;top:10px;opacity:.25;}
+ .albus-summary .summary-kicker {padding-right:8px;font-size:10px;min-height:40px;}
+ .albus-day-actions {grid-template-columns:1fr 1fr;}
+ .albus-day-actions > :last-child {grid-column:1/-1;}
+}
+
+/* Layout calendário primeiro e fluxo único de criação: revisão visual PR 3 */
+.albus-main {max-width:1680px;padding:20px clamp(13px,2.4vw,35px) 42px;}
+.albus-compact-head {margin-bottom:11px;}
+.albus-compact-head h1 {font-size:23px;margin:3px 0}
+.albus-compact-summary {margin:9px 0 13px;grid-template-columns:repeat(4,minmax(0,1fr));}
+.albus-compact-summary .summary-card {padding:13px 15px;min-height:93px;overflow:hidden;}
+.albus-compact-summary .summary-kicker {font-size:10px;max-width:100%;padding-right:23px;}
+.albus-compact-summary .summary-value {font-size:20px;line-height:1.4;margin:5px 0;}
+.albus-compact-summary .summary-meta {font-size:10px;}
+.albus-dashboard-three {display:grid;grid-template-columns:minmax(185px,220px) minmax(475px,1fr) minmax(300px,355px);align-items:start;gap:13px;}
+.albus-filter-panel {padding:19px 15px;position:sticky;top:12px;min-width:0;}
+.albus-filter-panel>strong {display:block;margin-bottom:19px;color:#435070;font-size:13px;}
+.albus-filter-field {display:flex;flex-direction:column;gap:6px;margin-bottom:19px;}
+.albus-filter-field label {font-size:10px;color:#8590a4;font-weight:800;}
+.albus-filter-field select {width:100%;min-width:0;border:1px solid #e3e7f1;border-radius:9px;background:white;color:#495570;font-size:12px;padding:10px 8px;}
+.albus-filter-panel .outline-button {padding:9px 7px;font-size:11px;line-height:1.3;white-space:normal;}
+.albus-side-tip {margin-top:26px;border-top:1px solid #eef0f6;padding-top:16px;font-size:11px;line-height:1.7;color:#8691a6;}
+.albus-dashboard-three .calendar {padding:17px 14px;}
+.albus-dashboard-three .details {min-height:420px;padding:17px 14px;}
+.albus-dashboard-three .albus-day {min-height:87px;}
+.albus-dashboard-three .albus-date-grid {gap:4px;}
+.albus-month {gap:9px;align-items:center;}
+.albus-month h2 {font-size:18px;}
+.albus-month-actions {display:flex;align-items:center;gap:7px;flex-shrink:0;}
+.albus-month-actions .icon-button {width:29px;height:32px;display:grid;place-items:center;padding:0;font-size:22px;}
+.albus-create-anchor {position:relative;}
+.albus-create-button {padding:9px 14px;font-size:12px;min-width:90px;}
+.albus-create-menu {position:absolute;top:calc(100% + 7px);right:0;min-width:244px;padding:6px;border:1px solid #e8eaf4;background:white;box-shadow:0 15px 45px rgba(35,46,79,.16);z-index:10;border-radius:13px;display:flex;flex-direction:column;gap:2px;}
+.albus-create-menu button {border:0;border-radius:9px;text-align:left;background:transparent;color:#2e3851;padding:10px 12px;display:flex;flex-direction:column;gap:2px;}
+.albus-create-menu button:hover {background:#f2f4ff;}
+.albus-create-menu button strong {font-size:12px;}
+.albus-create-menu button small {font-size:10px;color:#9aa4b7;}
+.albus-goals {border:1px solid #eaecf4;background:white;border-radius:14px;box-shadow:var(--shadow);padding:12px 15px 11px;margin-bottom:13px;}
+.albus-goals-head {display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:11px;}
+.albus-goals-head>div {display:flex;align-items:baseline;gap:11px;flex-wrap:wrap;}
+.albus-goals-head strong {font-family:Manrope,sans-serif;font-size:13px;color:#34415e;}
+.albus-goals-head span {color:#9ba5b7;font-size:11px;}
+.albus-goals-grid {display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;}
+.albus-goal-card {padding:11px 13px;border:1px solid #eceef7;background:#fafbff;border-radius:11px;text-align:left;display:flex;flex-direction:column;gap:5px;min-width:0;}
+.albus-goal-card:hover {background:#f4f6ff;border-color:#bdc4ee;}
+.albus-goal-card strong {color:#253153;font-size:17px;}
+.albus-goal-label {font-size:11px;font-weight:800;color:#6672af;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.albus-goal-hint,.albus-goal-card small {color:#8692aa;font-size:10px;}
+.albus-progress {display:block;background:#e8eaf3;height:7px;border-radius:12px;overflow:hidden;width:100%;margin:3px 0 4px;}
+.albus-progress span {display:block;height:100%;background:#6570d6;border-radius:12px;}
+.albus-goal-placeholder {display:flex;align-items:center;justify-content:center;border:1px dashed #c9cdeb;border-radius:11px;padding:12px;color:#707bb7;font-size:12px;background:#fafbff;text-align:left;min-height:57px;}
+.albus-cdi-meta {font-size:10px;color:#9aa5b8;margin-top:9px;line-height:1.5;}
+.albus-goal-modal-total {display:flex;flex-direction:column;align-items:flex-start;gap:5px;padding:14px 0;}
+.albus-goal-modal-total span,.albus-goal-modal-total small {font-size:11px;color:#929eb1;}
+.albus-goal-modal-total strong {font-size:28px;color:#323e63;}
+.albus-goal-stats {font-size:12px;color:#68748b;padding:12px 0;line-height:1.6;}
+.albus-select-all {display:flex;align-items:center;gap:8px;font-size:11px;color:#6d79a4;padding:10px 0 5px;}
+.albus-select-all input {width:auto!important;accent-color:#6470d5;}
+.albus-suggestions {display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:8px;}
+.albus-suggestions button {border:1px solid #e4e8f6;background:#f7f8ff;border-radius:18px;color:#6975a7;font-size:10px;padding:6px 8px;}
+.albus-modal .field-row {display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.albus-filter-panel .outline-button.wide {width:100%;}
+@media(max-width:1250px){
+ .albus-dashboard-three {grid-template-columns:185px minmax(375px,1fr) minmax(255px,300px);gap:10px;}
+ .albus-dashboard-three .albus-day {min-height:78px;padding:5px 4px;}
+ .albus-month h2 {font-size:16px;}
+ .albus-month-actions {gap:3px;}
+ .albus-create-button {padding:8px 9px;}
+}
+@media(max-width:1020px){
+ .albus-dashboard-three {grid-template-columns:190px minmax(0,1fr);}
+ .albus-dashboard-three .details {grid-column:2;position:static;}
+ .albus-goals-grid {grid-template-columns:repeat(3,minmax(0,1fr));}
+}
+@media(max-width:690px){
+ .albus-main {padding:15px 11px 40px;}
+ .albus-dashboard-three {grid-template-columns:minmax(0,1fr);gap:10px;}
+ .albus-filter-panel {grid-row:2;position:static;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;padding:13px;}
+ .albus-filter-panel>strong,.albus-side-tip {grid-column:1/-1;margin:0;}
+ .albus-filter-field {margin-bottom:4px;}
+ .albus-dashboard-three .calendar {grid-row:1;}
+ .albus-dashboard-three .details {grid-column:1;grid-row:3;}
+ .albus-compact-summary {grid-template-columns:repeat(2,minmax(0,1fr));}
+ .albus-goals-grid {grid-template-columns:repeat(2,minmax(0,1fr));}
+ .albus-dashboard-three .albus-day {min-height:73px;}
+ .albus-month-actions .icon-button {width:25px;}
+ .albus-create-menu {right:-42px;min-width:215px;}
+}
+
+/* Ajustes solicitados em 04/11: Hoje no calendário, Criar no painel e ajuda nos filtros. */
+.albus-compact-head { min-height:0; }
+.albus-calendar-today {padding:8px 12px!important;font-size:11px;min-height:33px;white-space:nowrap;}
+.albus-details-create {display:flex;align-items:center;justify-content:flex-end;margin:11px 0 16px;padding-bottom:13px;border-bottom:1px solid #eef0f6;}
+.albus-details-create .albus-create-anchor {width:100%;}
+.albus-details-create .albus-create-button {width:100%;display:flex;align-items:center;justify-content:center;gap:8px;padding:11px 15px;font-size:12px;}
+.albus-details-create .albus-create-menu {top:calc(100% + 5px);right:0;left:auto;min-width:min(280px,100%);width:100%;box-sizing:border-box;z-index:25;}
+.albus-filter-label {display:flex;align-items:center;justify-content:space-between;gap:6px;position:relative;min-height:22px;}
+.albus-filter-label>label {flex:1;min-width:0;}
+.albus-filter-help {position:relative;flex:none;}
+.albus-filter-help summary {list-style:none;width:18px;height:18px;border-radius:50%;display:grid;place-items:center;border:1px solid #bec5df;color:#6875b0;font-size:11px;font-weight:800;cursor:pointer;background:#f7f8ff;user-select:none;}
+.albus-filter-help summary::-webkit-details-marker {display:none;}
+.albus-filter-help summary:focus-visible {outline:2px solid #6875de;outline-offset:2px;}
+.albus-filter-help[open] summary {background:#edf0ff;border-color:#858fd0;}
+.albus-filter-help p {position:absolute;right:0;top:22px;margin:0;width:min(275px,calc(100vw - 45px));z-index:30;padding:12px 13px;border:1px solid #e1e5f2;box-shadow:0 12px 34px #20295220;background:white;border-radius:10px;font-size:11px;font-weight:500;line-height:1.55;color:#596783;}
+.albus-modal input[data-money="true"] {font-variant-numeric:tabular-nums;letter-spacing:.05px;}
+@media(max-width:1250px){
+ .albus-details-create .albus-create-menu {min-width:100%;}
+}
+@media(max-width:690px){
+ .albus-details-create .albus-create-menu {position:relative;top:5px;right:auto;width:100%;box-shadow:0 5px 19px #20295218;}
+ .albus-filter-help p {right:0;left:auto;}
+}
+
+/* Reagendamento seguro com mouse/caneta/toque e backup de dados. */
+.albus-chip {touch-action:none;user-select:none;-webkit-user-select:none;cursor:grab;}
+.albus-chip:active {cursor:grabbing;}
+.albus-row .albus-drag-handle,.albus-event .albus-drag-handle {touch-action:none;user-select:none;-webkit-user-select:none;cursor:grab;display:inline-flex;align-items:center;justify-content:center;min-width:20px;min-height:24px;}
+.albus-row,.albus-event {user-select:none;-webkit-user-select:none;}
+.albus-row .text,.albus-event .albus-small {user-select:text;-webkit-user-select:text;}
+.albus-row.albus-dragging,.albus-event.albus-dragging,.albus-chip.albus-dragging {opacity:.55;cursor:grabbing;outline:2px dashed #7a85dc;outline-offset:-2px;}
+.albus-day.drop-on {background:#e5eaff!important;outline:2px solid #626edd!important;outline-offset:-3px;}
+.albus-backup-button {border:1px solid #e1e5f2;background:#fff;color:#5f6b96;border-radius:8px;padding:7px 9px;font-weight:800;font-size:11px;white-space:nowrap;}
+.albus-backup-button:hover {background:#f0f3ff;}
+@media(max-width:590px){.albus-top-right {gap:5px}.albus-backup-button {padding:6px 7px;font-size:10px}}
+
+
+/* Hotfix de ajuda: o tooltip sai do container lateral e fica dentro da tela. */
+.albus-info-trigger{
+ display:grid;place-items:center;flex:none;width:21px;height:21px;padding:0;
+ border:1px solid #b9c3df;border-radius:50%;background:#f7f8ff;
+ color:#6475b1;font-size:12px;font-weight:800;cursor:pointer;
+}
+.albus-info-trigger:hover,.albus-info-trigger[aria-expanded="true"]{background:#e9edff;border-color:#7280ce;}
+.albus-help-popover{
+ position:fixed;box-sizing:border-box;z-index:120;max-height:calc(100dvh - 24px);
+ overflow-y:auto;padding:13px 15px;border:1px solid #dce2f1;border-radius:12px;
+ background:#fff;box-shadow:0 15px 38px rgba(27,39,84,.18);font-size:12px;
+ font-weight:500;line-height:1.65;overflow-wrap:anywhere;color:#53637f;
+}
+.albus-month-origin{
+ display:flex;align-items:center;justify-content:space-between;gap:13px;
+ margin:0 0 13px;padding:13px 16px;background:#fff;border:1px solid #ebedf3;
+ border-radius:13px;box-shadow:var(--shadow);
+}
+.albus-origin-heading{display:flex;flex-direction:column;gap:4px;flex:1;min-width:140px;}
+.albus-origin-heading strong,.albus-day-origin>strong{font-size:12px;color:#42506c;}
+.albus-origin-heading span{font-size:10px;line-height:1.45;color:#93a0b7;}
+.albus-payment-origin{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;min-width:0;flex:2;}
+.albus-payment-origin>div{display:flex;flex-direction:column;gap:5px;background:#f6f8fd;border-radius:9px;padding:9px 10px;min-width:0;}
+.albus-payment-origin span{font-size:10px;color:#8490a5;overflow-wrap:anywhere;}
+.albus-payment-origin strong{font-size:12px;color:#35415f;white-space:nowrap;font-variant-numeric:tabular-nums;}
+.albus-day-origin{margin:13px 0 7px;}
+.albus-day-origin .albus-payment-origin{margin-top:8px;gap:6px;}
+.albus-day-origin .albus-payment-origin>div{padding:7px 8px;}
+.albus-day-origin .albus-payment-origin span{font-size:9px;}
+.albus-day-origin .albus-payment-origin strong{font-size:11px;}
+/* Evento com despesas múltiplas e diálogo secundário. */
+.albus-event-linked{margin:15px 0;padding:13px;border:1px solid #e5e9f5;border-radius:12px;background:#fafbff;}
+.albus-event-linked-head{display:flex;justify-content:space-between;gap:10px;align-items:center;margin-bottom:10px;}
+.albus-event-linked-head>div{display:flex;flex-direction:column;gap:5px;}
+.albus-event-linked-head strong{font-size:13px;color:#435174;}
+.albus-event-linked-head span{font-size:11px;color:#929db3;}
+.albus-child-add{padding:9px 11px;font-size:11px;white-space:nowrap;}
+.albus-event-linked .albus-small{line-height:1.55;color:#8996ae;}
+.albus-event-linked-list{display:flex;flex-direction:column;gap:7px;margin-top:10px;}
+.albus-event-linked-row{display:flex;gap:8px;align-items:center;background:white;padding:10px;border:1px solid #eceefa;border-radius:9px;}
+.albus-event-linked-row>span{display:flex;flex-direction:column;gap:4px;min-width:0;flex:1;}
+.albus-event-linked-row b{font-size:12px;color:#475371;overflow-wrap:anywhere;}
+.albus-event-linked-row small{font-size:10px;color:#91a0b4;}
+.albus-event-linked-row strong{font-size:12px;color:#283b63;white-space:nowrap;}
+.albus-modal-backdrop:has(#event-form){z-index:40;}
+.albus-modal-backdrop:has(#event-expense-form){z-index:45;background:rgba(17,27,52,.55);}
+.albus-modal-backdrop:has(#event-expense-form) .albus-modal{width:min(470px,100%);}
+@media(max-width:1200px){
+ .albus-month-origin{align-items:stretch;flex-direction:column;}
+ .albus-payment-origin{flex:unset;width:100%;}
+}
+@media(max-width:690px){
+ .albus-payment-origin{grid-template-columns:1fr;gap:5px;}
+ .albus-month-origin{padding:12px;}
+ .albus-payment-origin>div{flex-direction:row;justify-content:space-between;align-items:center;}
+ .albus-day-origin .albus-payment-origin>div{flex-direction:column;align-items:flex-start;}
+ .albus-event-linked-head{flex-direction:column;align-items:stretch;}
+ .albus-child-add{width:100%;}
+}
+
+/* Resumo financeiro fixo: as demais seções (logotipo, título, objetivos e filtros)
+   permanecem no fluxo normal de rolagem. */
+.albus-sticky-sentinel{height:1px;pointer-events:none;}
+.albus-financial-sticky{
+ position:sticky;top:0;z-index:22;
+ background:#f7f8fc;
+ padding:4px 0 6px;
+ margin:0 0 12px;
+ isolation:isolate;
+ transition:box-shadow .18s ease,background-color .18s ease;
+}
+.albus-financial-sticky.is-stuck{
+ background:rgba(247,248,252,.98);
+ box-shadow:0 9px 24px rgba(31,45,80,.12);
+ border-radius:0 0 14px 14px;
+}
+.albus-financial-sticky .albus-compact-summary{margin:0 0 9px;gap:9px;}
+.albus-financial-sticky .albus-compact-summary .summary-card{
+ min-height:82px;padding:11px 14px;box-sizing:border-box;
+ transition:min-height .18s ease,padding .18s ease;
+}
+.albus-financial-sticky .albus-compact-summary .summary-value{
+ margin:4px 0;font-size:clamp(17px,1.8vw,21px);font-weight:800;font-variant-numeric:tabular-nums;
+}
+.albus-financial-sticky .albus-compact-summary .summary-card.income .summary-value{color:#169c72;}
+.albus-financial-sticky .albus-compact-summary .summary-card.expense .summary-value{color:#df5e62;}
+.albus-financial-sticky .albus-compact-summary .summary-card.reserve .summary-value{color:#5964d8;}
+.albus-financial-sticky .albus-compact-summary .summary-card.balance .summary-value{color:#df5e62;}
+.albus-financial-sticky .albus-compact-summary .summary-card.balance.zero .summary-value{color:#169c72;}
+.albus-financial-sticky .albus-compact-summary .summary-card.balance.negative .summary-value{color:#c23a46;}
+.albus-financial-sticky .albus-month-origin{margin:0;padding:10px 14px;gap:10px;}
+.albus-financial-sticky .albus-month-origin .albus-origin-heading{gap:3px;}
+.albus-financial-sticky .albus-payment-origin>div{padding:7px 10px;gap:3px;}
+.albus-financial-sticky.is-stuck .albus-compact-summary .summary-card{min-height:65px;padding:8px 13px;}
+.albus-financial-sticky.is-stuck .albus-compact-summary .summary-kicker{min-height:0;font-size:10px;line-height:1.3;}
+.albus-financial-sticky.is-stuck .albus-compact-summary .summary-value{font-size:18px;margin:2px 0 0;}
+.albus-financial-sticky.is-stuck .albus-compact-summary .summary-meta{display:none;}
+.albus-financial-sticky.is-stuck .albus-month-origin{padding:7px 12px;}
+.albus-financial-sticky.is-stuck .albus-month-origin .albus-origin-heading span{display:none;}
+.albus-financial-sticky.is-stuck .albus-payment-origin>div{padding:6px 9px;}
+/* Drop menus and popups stay above the pinned ribbon. */
+.albus-modal-backdrop{z-index:60;}
+@media(max-width:900px){
+ .albus-financial-sticky{padding:3px 0 5px;}
+ .albus-financial-sticky .albus-compact-summary{gap:6px;}
+ .albus-financial-sticky .albus-compact-summary .summary-card{padding:9px 10px;min-height:72px;}
+ .albus-financial-sticky .albus-compact-summary .summary-value{font-size:17px;}
+ .albus-financial-sticky .albus-month-origin{padding:8px 10px;}
+}
+@media(max-width:690px){
+ .albus-financial-sticky{top:0;margin:0 0 10px;}
+ .albus-financial-sticky .albus-compact-summary{grid-template-columns:repeat(2,minmax(0,1fr));gap:5px;margin:0 0 6px;}
+ .albus-financial-sticky .albus-compact-summary .summary-card{min-height:62px;padding:6px 9px;}
+ .albus-financial-sticky .albus-compact-summary .summary-kicker{font-size:10px;min-height:0;line-height:1.25;padding-right:16px;}
+ .albus-financial-sticky .albus-compact-summary .summary-value{font-size:16px;margin:1px 0;}
+ .albus-financial-sticky .albus-compact-summary .summary-meta{font-size:9px;}
+ .albus-financial-sticky.is-stuck .albus-compact-summary .summary-card{min-height:50px;padding:5px 9px;}
+ .albus-financial-sticky.is-stuck .albus-compact-summary .summary-value{font-size:15px;}
+ .albus-financial-sticky .albus-month-origin{padding:7px 9px;gap:6px;}
+ .albus-financial-sticky .albus-month-origin .albus-origin-heading strong{font-size:10px;}
+ .albus-financial-sticky .albus-origin-heading span{display:none;}
+ .albus-financial-sticky .albus-payment-origin{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px;}
+ .albus-financial-sticky .albus-payment-origin>div{display:flex;flex-direction:column;align-items:flex-start;padding:5px 6px;gap:3px;}
+ .albus-financial-sticky .albus-payment-origin span{font-size:8px;line-height:1.2;}
+ .albus-financial-sticky .albus-payment-origin strong{font-size:10px;}
+ .albus-financial-sticky.is-stuck .albus-payment-origin>div{padding:5px 6px;}
+ .albus-financial-sticky .albus-month-origin{display:block;}
+ .albus-financial-sticky .albus-month-origin .albus-origin-heading{margin-bottom:5px;}
+}
+@media(max-width:390px){
+ .albus-financial-sticky .albus-compact-summary .summary-card{padding:5px 7px;}
+ .albus-financial-sticky .albus-compact-summary .summary-value{font-size:14px;}
+ .albus-financial-sticky .albus-payment-origin strong{font-size:9px;}
+}
+
+/* Estados do saldo: dinheiro a destinar é favorável; déficit é alerta. */
+.albus-summary .summary-card.balance .summary-value,
+.albus-financial-sticky .albus-compact-summary .summary-card.balance .summary-value {color:#169c72;}
+.albus-summary .summary-card.balance.zero .summary-value,
+.albus-financial-sticky .albus-compact-summary .summary-card.balance.zero .summary-value {color:#169c72;}
+.albus-summary .summary-card.balance.negative .summary-value,
+.albus-financial-sticky .albus-compact-summary .summary-card.balance.negative .summary-value {color:#c23a46;}
+.albus-deficit-message {margin-top:5px;font-size:10px;line-height:1.4;color:#bb4b55;font-weight:600;}
+.albus-financial-sticky.is-stuck .albus-deficit-message {font-size:9px;line-height:1.3;margin-top:2px;}
+.albus-financial-sticky.is-stuck .albus-compact-summary .summary-card.balance.negative .summary-meta {display:none;}
+@media(max-width:690px){
+ .albus-deficit-message {font-size:9px;}
+ .albus-financial-sticky.is-stuck .albus-deficit-message {font-size:8px;}
+}
+
+/* Destinos de cópia de despesas para eventos, com indicação de arrastar e soltar. */
+.albus-event[data-drop-event]{outline-offset:-3px;transition:outline-color .15s ease,background-color .15s ease;}
+.albus-event[data-drop-event].drop-on{outline:2px solid #6371d8;background:#eef1ff;}
+.albus-event-linked-row .albus-tiny-button{flex:none;}
+.albus-row .albus-tiny-button[aria-label="Reutilizar despesa"],
+.albus-row .albus-tiny-button[aria-label="Desvincular despesa"]{font-size:13px;}
+.albus-row .albus-tiny-button[aria-label="Reutilizar despesa"]:focus-visible,
+.albus-row .albus-tiny-button[aria-label="Desvincular despesa"]:focus-visible{outline:2px solid #6371d8;outline-offset:2px;}
+
+/* Reserva de emergência: destaque visual e conquista projetada no calendário. */
+.albus-emergency-suggestion {
+ border-color:#b5decf;background:#f0faf5;color:#137456;
+ font-weight:800;text-align:left;line-height:1.5;
+}
+.albus-emergency-suggestion:hover{background:#e6f5ed;border-color:#78c2a2;}
+.albus-emergency-goal{border-color:#a7d6c0;background:#f5fbf7;}
+.albus-emergency-goal .albus-goal-label{color:#16845f;}
+.albus-emergency-goal .albus-progress span{background:#159a72;}
+.albus-emergency-fields{padding:10px 12px;border-radius:12px;background:#f7fbf9;border:1px solid #d9ebe1;margin:10px 0;}
+.albus-emergency-fields .albus-warning{margin-bottom:11px;}
+.albus-emergency-fields .albus-small{line-height:1.6;padding:4px 0;}
+.albus-schedule-fields{background:#f7f9fd;border:1px solid #e2e8f3;border-radius:12px;padding:12px;margin:13px 0;}
+.albus-schedule-fields .field-checkbox{margin:0 0 11px;}
+.albus-schedule-fields .albus-small{display:block;margin:5px 0;color:#8a97ad;line-height:1.5;}
+.albus-success-goal{font-size:11px;background:#eff9f3;border:1px solid #cae8d5;color:#257b56;padding:10px 12px;border-radius:10px;line-height:1.5;margin-top:9px;}
+.albus-goal-milestone{display:block;width:100%;min-width:0;background:#e4f5eb;border:1px solid #91d0aa;color:#17754f;border-radius:6px;margin-top:3px;text-align:left;font-size:9px;font-weight:800;padding:3px 5px;line-height:1.25;white-space:normal;cursor:pointer;}
+.albus-goal-milestone:hover{background:#cdefda;border-color:#50b883;}
+.albus-financial-sticky .summary-card.reserve .summary-kicker{font-size:10px;line-height:1.2;}
+@media(max-width:690px){
+ .albus-goal-milestone{font-size:8px;padding:2px 3px;}
+ .albus-emergency-fields{padding:8px;}
+ .albus-financial-sticky .summary-card.reserve .summary-kicker{font-size:9px;}
+}
+
+/* Revisão da reserva de emergência: comparação antes de aprovar novas referências. */
+.albus-review-columns{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;margin:14px 0;}
+.albus-review-columns>div{border:1px solid #e4e9f1;border-radius:10px;padding:11px 12px;display:flex;flex-direction:column;gap:6px;background:#fafbfe;}
+.albus-review-columns small{font-size:10px;line-height:1.4;color:#7c899d;}
+.albus-review-columns strong{font-size:15px;color:#34415d;font-variant-numeric:tabular-nums;}
+.albus-review-basis{display:flex;gap:5px;flex-wrap:wrap;align-items:center;margin:8px 0;}
+.albus-review-basis strong{font-size:11px;color:#3d4c6c;flex-basis:100%;}
+.albus-review-basis span{font-size:10px;color:#65738c;padding:4px 7px;border-radius:6px;background:#f2f5fa;}
+.albus-review-capacity{padding:12px;border:1px solid #cee1d7;background:#f3faf5;color:#326c4d;border-radius:10px;margin:14px 0;display:flex;flex-direction:column;gap:6px;}
+.albus-review-capacity b{font-size:12px;}
+.albus-review-capacity span{font-size:11px;line-height:1.5;}
+@media(max-width:490px){.albus-review-columns{gap:6px}.albus-review-columns>div{padding:8px}.albus-review-columns strong{font-size:13px}}
+
+/* Limite único de aportes e organização por prioridades. */
+.albus-summary-settings{display:inline-flex;align-items:center;justify-content:center;margin-top:5px;
+ border:1px solid #dce3f0;background:#f5f8ff;color:#4c6095;font-weight:700;
+ font-size:10px;padding:4px 8px;border-radius:7px;cursor:pointer;}
+.albus-summary-settings:hover{background:#e8eefb;}
+.albus-priority-item{display:flex;flex-direction:column;min-width:0;border-radius:12px;transition:background-color .14s,outline-color .14s;}
+.albus-priority-item>.albus-goal-card{width:100%;flex:1;}
+.albus-priority-controls{display:flex;align-items:center;gap:5px;justify-content:flex-end;padding:4px 5px 1px;}
+.albus-priority-controls small{margin-right:auto;font-size:10px;color:#5b7a71;}
+.albus-priority-controls .albus-tiny-button{min-width:25px;min-height:25px;}
+.albus-goal-handle{display:inline-flex;align-items:center;justify-content:center;
+ padding:5px 9px;border:1px solid #d8def0;background:#f7f9fd;border-radius:7px;
+ cursor:grab;touch-action:none;user-select:none;color:#62749d;font-size:13px;}
+.albus-goal-handle:active{cursor:grabbing;}
+.albus-priority-item.priority-drop-on{outline:2px dashed #6472d3;outline-offset:2px;background:#edf1ff;}
+.albus-priority-item.priority-moving{opacity:.6;}
+.albus-virtual-row{background:#f5fbf7;border:1px solid #d5e9dc;border-radius:8px;padding:6px;}
+.albus-virtual-row .albus-entry-price{color:#367a57;}
+.albus-chip.reserve{background:#e7f7ed;color:#28704f;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:default;}
+.albus-goals-head>.albus-tiny-button{margin-left:auto;}
+@media(max-width:690px){
+ .albus-summary-settings{font-size:9px;padding:3px 5px;}
+ .albus-priority-controls{justify-content:flex-end;}
+}
+
+/* Confirmação nativa do Albus e métricas de prioridade das caixinhas. */
+.albus-delete-confirm{padding:12px 2px 5px;display:flex;flex-direction:column;gap:12px;}
+.albus-delete-confirm p{margin:0;font-size:13px;line-height:1.7;color:#53647e;}
+.albus-delete-confirm p b{color:#34435f;}
+.albus-danger-confirm{background:#c64a57!important;border-color:#c64a57!important;color:#fff!important;}
+.albus-danger-confirm:hover{background:#ab3746!important;border-color:#ab3746!important;}
+.albus-goal-card .albus-goal-possible{color:#23845d;font-weight:750;}
+.albus-goal-card .albus-goal-priority{color:#6474aa;font-size:10px;font-weight:800;margin-top:3px;}
+.albus-emergency-goal .albus-goal-priority{color:#258b61;}
+@media(max-width:690px){.albus-delete-confirm .form-footer{flex-wrap:wrap;gap:8px;}}
+
+
+/* Calendário como página principal: cards são ações; detalhes aparecem apenas quando chamados. */
+.albus-title-row.albus-compact-head{display:flex;align-items:center;justify-content:space-between;gap:16px;}
+.albus-main-settings{padding:9px 15px;border-radius:11px;border:1px solid #dfe7ef;
+ color:#3c596c;background:#fff;font-size:12px;font-weight:700;white-space:nowrap;cursor:pointer;}
+.albus-main-settings:hover{background:#f0f7f5;}
+.albus-note-compact{font-size:10px;line-height:1.4;padding:7px 10px;opacity:.8;margin-bottom:9px;}
+.albus-financial-card{font:inherit;min-width:0;min-height:0;display:flex;flex-direction:column;
+ text-align:left;align-items:flex-start;border:1px solid #e9edf2;border-radius:12px;
+ background:#fff;cursor:pointer;transition:transform .12s,border-color .12s,box-shadow .12s;}
+.albus-financial-card:hover{transform:translateY(-1px);border-color:#9fbed3;box-shadow:0 5px 16px #21354b1c;}
+.albus-financial-card:focus-visible{outline:2px solid #4b947e;outline-offset:2px;}
+.albus-financial-card .summary-kicker,.albus-financial-card .summary-meta{display:block;}
+.albus-financial-card .summary-value{display:block;}
+.albus-summary-open{display:none;color:#6f8b97;font-size:9px;margin-top:auto;}
+.albus-financial-card:hover .albus-summary-open{display:block;}
+.albus-summary-pending{display:inline-flex;margin-top:4px;font-size:9px;color:#9c6630;
+ background:#fff5e5;border-radius:6px;padding:2px 6px;font-weight:800;}
+.albus-goals{border:1px solid #dfe9e6;border-radius:13px;background:#fff;margin-bottom:13px;overflow:visible;}
+.albus-goals-toggle{display:flex;width:100%;align-items:center;justify-content:space-between;
+ padding:12px 16px;color:#315c50;font-weight:800;background:#f8fcfa;border:0;border-radius:12px;
+ font-size:13px;text-align:left;cursor:pointer;}
+.albus-goals-toggle small{color:#8ca5a0;font-size:10px;font-weight:500;margin-left:7px;}
+.albus-goals.is-open .albus-goals-toggle{border-radius:12px 12px 0 0;border-bottom:1px solid #e4eeeb;}
+.albus-goals-content{padding:12px;}
+.albus-calendar-workspace{display:grid;grid-template-columns:minmax(0,1fr);gap:15px;align-items:start;max-width:100%;}
+.albus-calendar-workspace.has-details{grid-template-columns:minmax(0,1fr) minmax(300px,365px);}
+.albus-calendar-workspace .calendar{min-width:0;padding:18px 20px;}
+.albus-calendar-workspace .details{min-width:0;position:sticky;top:175px;max-height:calc(100dvh - 195px);
+ overflow-y:auto;padding:17px 14px;box-sizing:border-box;}
+.albus-detail-heading{display:flex;align-items:center;justify-content:space-between;gap:10px;}
+.albus-detail-close{display:grid;place-items:center;width:31px;height:31px;border:1px solid #dae2e9;
+ background:#f5f8f9;border-radius:9px;color:#5e7085;cursor:pointer;font-size:20px;}
+.albus-summary-modal-lead{font-size:12px;color:#7e8ca0;margin:0 0 13px;}
+.albus-summary-total{display:flex;align-items:center;justify-content:space-between;
+ border-radius:12px;background:#f5f8fb;padding:14px;margin:10px 0 16px;gap:12px;}
+.albus-summary-total span{font-size:12px;color:#718097;}
+.albus-summary-total strong{font-size:21px;color:#345d55;font-variant-numeric:tabular-nums;}
+.albus-summary-items,.albus-summary-group{display:flex;flex-direction:column;gap:8px;margin:12px 0;}
+.albus-summary-group h3,.albus-modal h3{font-size:13px;color:#405369;margin:11px 0 5px;}
+.albus-summary-row{display:flex;align-items:center;gap:11px;padding:11px;
+ background:#fafbfd;border:1px solid #edf0f4;border-radius:10px;}
+.albus-summary-row-details{flex:1;display:flex;flex-direction:column;gap:4px;min-width:0;}
+.albus-summary-row-details b{font-size:12px;color:#3e5368;overflow-wrap:anywhere;}
+.albus-summary-row-details small{color:#8696a7;font-size:10px;line-height:1.4;}
+.albus-summary-row>strong{color:#364c60;font-size:12px;white-space:nowrap;}
+.albus-summary-modal-actions{display:flex;flex-wrap:wrap;gap:9px;margin:12px 0;}
+.albus-small-confirm{padding:6px 9px;border:0;border-radius:8px;background:#178562;
+ color:#fff;font-size:10px;font-weight:750;cursor:pointer;}
+.albus-small-confirm:hover{background:#116649;}
+.albus-reserve-figures{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;}
+.albus-reserve-figures>span{background:#f6f9fb;border-radius:9px;padding:10px;
+ color:#77869b;font-size:11px;line-height:1.55;}
+.albus-reserve-figures b{color:#38536a;}
+.albus-settings-section{border-bottom:1px solid #e8edf0;padding:8px 0 16px;margin-bottom:14px;}
+.albus-settings-section:last-of-type{border-bottom:0;margin-bottom:6px;}
+/* No celular, resumo compacto 2x2, calendário primeiro, painel do dia abaixo sem lateral fixa. */
+@media(max-width:1100px){
+ .albus-calendar-workspace.has-details{grid-template-columns:minmax(0,1fr) minmax(275px,340px);}
+ .albus-calendar-workspace .calendar{padding:14px 12px;}
+ .albus-calendar-workspace .details{top:145px;max-height:calc(100dvh - 160px);}
+}
+@media(max-width:850px){
+ .albus-calendar-workspace.has-details{grid-template-columns:1fr;}
+ .albus-calendar-workspace .details{position:static;max-height:none;overflow:visible;}
+ .albus-calendar-workspace .calendar{min-height:0;}
+ .albus-financial-sticky{position:sticky;top:0;}
+}
+@media(max-width:590px){
+ .albus-main-settings{padding:8px 10px;font-size:10px;}
+ .albus-note-compact{display:none;}
+ .albus-financial-card .summary-kicker{font-size:10px;}
+ .albus-financial-card .summary-value{font-size:15px;}
+ .albus-summary-open{display:none!important;}
+ .albus-goals-toggle{padding:11px;font-size:12px;}
+ .albus-goals-content{padding:9px;}
+ .albus-calendar-workspace .calendar{padding:10px 7px;}
+ .albus-calendar-workspace .albus-day{min-height:73px;padding:5px 3px;gap:3px;}
+ .albus-calendar-workspace .albus-day-number{font-size:10px;}
+ .albus-calendar-workspace .albus-money{font-size:9px;line-height:1.2;overflow-wrap:anywhere;}
+ .albus-calendar-workspace .albus-chip{font-size:9px;max-width:100%;overflow:hidden;text-overflow:ellipsis;}
+ .albus-summary-row{flex-wrap:wrap;}
+ .albus-summary-row>strong{font-size:11px;}
+ .albus-reserve-figures{grid-template-columns:1fr 1fr;}
+ .albus-financial-sticky .albus-compact-summary .summary-card{min-height:60px;}
+}
+@media(max-width:380px){
+ .albus-calendar-workspace .albus-day{min-height:66px;padding:3px 2px;}
+ .albus-calendar-workspace .albus-chip{font-size:8px;}
+ .albus-main-settings{font-size:9px;padding:7px;}
+}
+
+/* O detalhamento acompanha apenas a grade no topo: não flutua pelo scroll. */
+.albus-calendar-workspace .details,
+.albus-calendar-workspace.has-details .details {
+ position:static!important;top:auto!important;align-self:start!important;
+ max-height:none!important;overflow:visible!important;
+}
+/* Conciliação: planejado e realizado, sem botões de aporte na célula do dia. */
+.albus-check-pending{display:inline-flex;margin-top:auto;align-self:flex-start;
+ font-size:9px;font-weight:700;color:#995c24;background:#fff0db;
+ padding:2px 5px;border-radius:5px;line-height:1.3;}
+.albus-reconcile-action{font-size:10px;background:#e8f6f0;color:#146d50;
+ border:1px solid #bee2d1;border-radius:7px;padding:5px 7px;cursor:pointer;}
+.albus-review-goal{display:grid;grid-template-columns:minmax(0,1fr) minmax(120px,150px);
+ gap:10px;padding:12px;border:1px solid #e3e9ef;border-radius:12px;background:#f9fbfd;align-items:end;}
+.albus-review-goal .albus-summary-row-details{grid-column:1/-1;}
+.albus-review-goal .field{margin:0;font-size:11px;}
+.albus-review-goal .field input{width:100%;box-sizing:border-box;}
+.albus-contribution-row{flex-wrap:wrap;}
+.albus-contribution-row .albus-small-confirm{margin-left:auto;}
+@media(max-width:590px){
+ .albus-review-goal{grid-template-columns:1fr 1fr;gap:8px;padding:10px;}
+ .albus-check-pending{font-size:8px;padding:2px 4px;}
+ .albus-reconcile-action{font-size:9px;}
+}
+@media(max-width:380px){.albus-review-goal{grid-template-columns:1fr;}}
+
+/* Cabeçalho do calendário: Conferir mês é acessível também em telas estreitas. */
+.albus-month-actions{display:flex;align-items:center;justify-content:flex-end;flex-wrap:wrap;gap:6px;}
+.albus-month-review{background:#eaf7f1;border:1px solid #b7ddca;color:#176a50;
+ font-weight:750;white-space:nowrap;}
+.albus-month-review:hover{background:#dbf0e4;}
+@media(max-width:590px){
+ .albus-month-actions{gap:4px;}
+ .albus-month-review{font-size:10px;padding:7px 8px;}
+ .albus-month-actions .icon-button{min-width:28px;}
+}
+@media(max-width:390px){
+ .albus-month-review{font-size:9px;padding:6px;}
+ .albus-month-actions{justify-content:flex-start;}
+}
