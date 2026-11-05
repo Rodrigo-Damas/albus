@@ -11,6 +11,7 @@ const P=load('goal-priorities.js','AlbusPriorities');
 const B=load('backup.js','AlbusBackup');
 const M=load('currency-mask.js','AlbusMoneyMask');
 const R=load('expense-reuse.js','AlbusExpenseReuse');
+const Z=load('reconciliation.js','AlbusReconciliation');
 const source=read('app-v3.js');
 const marker='G.getDailyCDI().then(data=>{if(data){state.cdi=data;if(!state.modal)render()}}).catch(()=>{});';
 assert.ok(source.includes(marker),'Inicialização mudou');
@@ -27,8 +28,8 @@ function setup(){
  const storage={getItem:k=>saved.get(k)||null,setItem:(k,v)=>saved.set(k,String(v))};
  const api=new Function('document','localStorage','setTimeout','crypto','AlbusEngine','AlbusAccess',
  'AlbusGoals','AlbusMoneyMask','AlbusBackup','AlbusExpenseReuse','AlbusEmergency',
- 'AlbusPriorities','window','location','fetch','return '+injected.trim())(doc,storage,
- ()=>{},{randomUUID:()=> 'test-uuid'},E,A,{...G,getDailyCDI:async()=>null},M,B,R,H,P,
+ 'AlbusPriorities','AlbusReconciliation','window','location','fetch','return '+injected.trim())(doc,storage,
+ ()=>{},{randomUUID:()=> 'test-uuid'},E,A,{...G,getDailyCDI:async()=>null},M,B,R,H,P,Z,
  {addEventListener(){},innerWidth:1200,innerHeight:800},{origin:'https://preview.example'},
  ()=>Promise.reject(Error('offline')));
  return {api,root,saved};
@@ -52,13 +53,14 @@ test('origens de cartão aparecem no resumo de pagamentos, não no cabeçalho',(
  assert.match(root.innerHTML,/Cartão · compras anteriores/);
  assert.match(root.innerHTML,/Pix, débito e dinheiro/);
 });
-test('a confirmação dos aportes aparece apenas no resumo de reservas',()=>{
+test('atualizar realizado aparece no resumo de reservas, nunca no dia',()=>{
  const {api,root}=setup();
  api.state.detailsOpen=true;api.render();
  assert.doesNotMatch(root.innerHTML,/data-action="confirm-portfolio"/);
  api.open('monthly-summary',{kind:'reserve'});
  assert.match(root.innerHTML,/Aportes a confirmar/);
- assert.match(root.innerHTML,/data-action="confirm-portfolio"/);
+ assert.match(root.innerHTML,/data-action="review-reserves"/);
+ assert.doesNotMatch(root.innerHTML,/data-action="confirm-portfolio"/);
 });
 test('detalhamento do dia pode ser aberto e fechado sem apagar o calendário',()=>{
  const {api,root}=setup();
