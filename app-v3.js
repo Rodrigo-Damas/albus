@@ -209,7 +209,7 @@ function monthlySummaryModal(m){
    '<div class="albus-summary-modal-actions">'+button('⚙ Ajustar limite','portfolio-settings','','secondary-button')+
    button('◎ Ver objetivos','open-goals','','secondary-button')+
  button('Atualizar realizado','review-reserves','','primary-button')+'</div>'+
-   '<h3>Aportes a confirmar</h3><div class="albus-summary-items">'+
+   '<h3>Aportes planejados · a conferir</h3><div class="albus-summary-items">'+
    (planned.map(line).join('')||'<p class="albus-small">Nenhum aporte automático pendente neste mês.</p>')+'</div>'+
    (confirmed.length?'<h3>Aportes realizados</h3>'+confirmed.map(x=>item(x,false)).join(''):'')+
    (other.length?'<h3>Outras reservas</h3>'+other.map(x=>item(x)).join(''):''));
@@ -322,7 +322,7 @@ function row(x,child=false){
  earlier?'Compra anterior · paga neste mês':'',
  due&&x.payment_method==='credit'?'Vence '+fmt(due):''].filter(Boolean).join(' · ');
  if(x.virtual_portfolio)return '<div class="albus-row albus-virtual-row"><span class="albus-grip">◈</span>'+
- '<span class="text"><b>'+esc(x.title)+'</b><div class="caption">Aporte programado · confirme no resumo de Reservas, objetivos e imprevistos</div></span>'+
+ '<span class="text"><b>'+esc(x.title)+'</b><div class="caption">Aporte planejado · atualize o realizado no resumo mensal</div></span>'+
  '<span class="albus-entry-price">'+mny(x.amount_cents)+'</span></div>';
  return '<div class="albus-row" data-drag-kind="entry" data-drag-id="'+esc(x.id)+'" data-occurrence="'+esc(x.occurrence_date||x.entry_date)+'"><span class="albus-grip albus-drag-handle" title="Segure e arraste">⠿</span>'+
  '<span class="text"><b>'+esc(x.title)+'</b><div class="caption">'+esc(desc)+
@@ -815,7 +815,7 @@ function render(){
  state.modal?.type==='goal-details'?goalDetails(state.modal):
  state.modal?.type==='emergency-review'?emergencyReview(state.modal):
  state.modal?.type==='confirm-goal-delete'?confirmGoalDeletion(state.modal):
- state.modal?.type==='contribution'?contributionForm(state.modal):
+ 
  state.modal?.type==='settings'?settingsForm():
  state.modal?.type==='portfolio-settings'?portfolioSettings():
  state.modal?.type==='move'?moveForm(state.modal):
@@ -839,6 +839,7 @@ function submitEntry(ev){
  ev.preventDefault();try{
  const f=new FormData(ev.currentTarget),old=db.entries.find(x=>x.id===state.modal.id),type=String(f.get('entry_type')||'expense'),date=String(f.get('entry_date')||''),title=String(f.get('title')||'').trim();
  if(!title||!E.dateParts(date)||!['expense','income','reserve','task'].includes(type))throw Error('Informe título e data válidos.');
+ if(!old&&type==='reserve')throw Error('Use Objetivo para planejar reservas e Atualizar realizado para conciliar os aportes.');
  const amount=type==='task'?0:E.parseMoney(f.get('amount')),frequency=String(f.get('frequency')||'none');
  if(!['none','monthly','business_day_monthly'].includes(frequency))throw Error('Recorrência inválida.');
  const status=String(f.get('status')||'planned'),methods={income:['planned','received'],expense:['planned','paid'],reserve:['planned','set_aside'],task:['pending','done']};
@@ -1137,7 +1138,7 @@ function bind(){
  formBind('#portfolio-settings-form',savePortfolioSettings);
  formBind('#reconcile-entry-form',submitEntryReconciliation);
  formBind('#monthly-goal-review-form',submitGoalReconciliation);
- formBind('#reuse-form',submitReuse);formBind('#entry-form',submitEntry);formBind('#event-form',submitEvent);formBind('#event-expense-form',submitEventExpense);formBind('#goal-form',submitGoal);formBind('#contribution-form',submitContribution);formBind('#settings-form',submitSettings);
+ formBind('#reuse-form',submitReuse);formBind('#entry-form',submitEntry);formBind('#event-form',submitEvent);formBind('#event-expense-form',submitEventExpense);formBind('#goal-form',submitGoal);formBind('#settings-form',submitSettings);
  formBind('#move-form',e=>{e.preventDefault();try{move(state.modal.kind,state.modal.id,new FormData(e.currentTarget).get('date'),false,state.modal.occurrence)}catch(err){error(err)}});
  updateEntryUI();
  updateGoalUI();
