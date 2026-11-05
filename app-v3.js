@@ -134,9 +134,9 @@ function cashBreakdown(parts,scope){
 function dashboardCards(){
  const data=summary(),balance=data.valueToAssign,month=monthTitle(state.month);
  const values=[
-  ['Receitas de '+month,data.income,'Entradas do mês','income'],
-  ['Pagamentos previstos',data.expense,'Vencimentos do mês','expense'],
-  ['Reservas, objetivos e imprevistos',data.reserve+data.provision,'Aportes e provisão do mês','reserve'],
+  ['Receitas de '+month,data.income,'Recebido: '+mny(data.received),'income'],
+  ['Pagamentos previstos',data.expense,'Pago: '+mny(data.paid),'expense'],
+  ['Reservas, objetivos e imprevistos',data.reserve+data.provision,'Realizado: '+mny(data.setAside)+' · Imprevistos: '+mny(data.provision),'reserve'],
   [balance<0?'Déficit a cobrir':balance===0?'Orçamento distribuído':'Valor a destinar',balance,
     balance<0?'Saídas superaram receitas':balance===0?'Planejamento equilibrado':'Disponível para distribuir','balance']
  ];
@@ -160,7 +160,9 @@ function monthlySummaryModal(m){
  const total=items=>items.reduce((v,x)=>v+Number(x.amount_cents||0),0);
  const dateText=x=>fmt(x.display_date||x.entry_date);
  const item=(x,canEdit=true)=>'<div class="albus-summary-row"><span class="albus-summary-row-details"><b>'+esc(x.title||'Lançamento')+'</b><small>'+
-  dateText(x)+(x.payment_method==='credit'?' · Cartão':'')+(x.virtual_portfolio?' · Planejado':'')+'</small></span>'+
+  dateText(x)+(x.payment_method==='credit'?' · Cartão':'')+
+ (Z.isReconciled(x)?' · Realizado '+mny(x.amount_cents)+' / Planejado '+mny(x.planned_amount_cents??x.amount_cents):
+ x.virtual_portfolio?' · Planejado':' · A conferir')+'</small></span>'+
   '<strong>'+mny(x.amount_cents)+'</strong>'+
   (canEdit&&!x.virtual_portfolio?button('Editar','edit-entry','data-id="'+esc(x.id)+'" data-occurrence="'+esc(x.occurrence_date||x.entry_date)+'"','albus-tiny-button')+
  (['expense','income'].includes(x.entry_type)&&x.display_date<=today()?button('Atualizar realizado','reconcile-entry','data-id="'+esc(x.id)+'" data-occurrence="'+esc(x.occurrence_date||x.entry_date)+'"','albus-small-confirm'):''):'')+
@@ -549,7 +551,7 @@ function reconciliationEntryForm(m){
  const src=db.entries.find(x=>x.id===m.id);
  if(!src)return '';
  const occurrence=m.occurrence||src.entry_date;
- const matches=E.occurrencesForMonth([src],db.overrides,E.monthOf(occurrence),db.settings,'cash');
+ const matches=E.expandMonth([src],db.overrides,E.monthOf(occurrence));
  const item=matches.find(x=>x.occurrence_date===occurrence)||src;
  const isDone=Z.isReconciled(item)||['paid','received'].includes(item.status);
  const proposed=item.planned_amount_cents??src.planned_amount_cents??src.amount_cents;
@@ -590,10 +592,10 @@ function monthlyGoalReviewForm(){
   const recorded=Z.byMonth(db,goal.id,month);
   const existing=Z.goalAlreadyCompleted(db,goal.id,month,E,db.settings);
   const projected=rows.find(x=>x.virtual_portfolio&&x.goal_id===goal.id);
-  if(!recorded&&!projected)return null;
-  const item=recorded||projected,when=item.entry_date;
-  if(!recorded&&when>today())return null;
-  const plan=recorded?.planned_amount_cents??projected?.amount_cents??goal.monthly_cents;
+  if(!recorded&&!projected&&!existing)return null;
+  const item=recorded||projected||existing,when=item?.entry_date;
+  if(!recorded&&!existing&&when>today())return null;
+  const plan=recorded?.planned_amount_cents??projected?.amount_cents??existing?.planned_amount_cents??goal.monthly_cents;
   const actual=recorded?.realized_amount_cents??(existing?existing.amount_cents:plan);
   const editable=!(existing&&!recorded&&existing.frequency&&existing.frequency!=='none');
   return {goal,when,plan,actual,editable,recorded};
@@ -724,19 +726,13 @@ function reorderPriority(sourceId,targetId){
  catch(e){state.error='Erro ao salvar a ordem: '+e.message;render()}
 }
 function confirmPortfolio(itemId,date,amount){
- const goal=goals().find(g=>g.id===itemId);
- if(!P.active(db.settings)||!goal||!E.dateParts(date))throw Error('Objetivo ou data indisponível.');
- const candidate=cashRows(E.monthOf(date),'cash').find(x=>x.virtual_portfolio&&x.goal_id===itemId&&x.entry_date===date);
- if(!candidate||candidate.amount_cents!==amount)throw Error('O planejamento foi alterado. Reabra a data e confira o aporte.');
- const contribution=A.normalizeItem({id:id(),entry_type:'reserve',goal_id:itemId,
-   title:'Aporte confirmado · '+goal.title,entry_date:date,amount_cents:amount,
-   status:'set_aside',frequency:'none',payment_method:'pix',category:'Precaução',
-   created_by:state.user,responsible_ids:goal.responsible_ids,
-   visibility:goal.visibility,workspace_id:A.WORKSPACE_ID});
- const next={...db,entries:[...db.entries,contribution]};
+ const month=E.monthOf(date);
+ const candidate=cashRows(month,'cash').find(x=>x.virtual_portfolio&&x.goal_id===itemId&&x.entry_date===date);
+ if(!candidate&&!Z.byMonth(db,itemId,month))throw Error('Não existe aporte a conciliar no mês.');
+ const next=Z.reconcileGoal(db,itemId,month,amount,today(),candidate,id,E);
  B.save(localStorage,next);Object.assign(db,next);
- state.message='Aporte confirmado no saldo real. A fila foi recalculada.';
- render();
+ state.modal={type:'monthly-summary',kind:'reserve'};
+ state.message='Aporte mensal conciliado sem duplicidade.';render();
 }
 function settingsForm(){
  const cfg=db.settings;
