@@ -372,7 +372,7 @@ function submitEventExpense(ev){
 function goalForm(m){
  const existing=db.goals.find(x=>x.id===m.id),old=existing||{};
  const cap=P.budget(db,E,H,E.monthOf(today()));
- const suggestedContribution=P.active(db.settings)?cap.cents:P.suggestedLimit(db,E,H,E.monthOf(today()),db.settings).cents;
+ const suggestedContribution=cap.cents;
  const isEmergency=H.isEmergency(old)||(!existing&&m.kind==='emergency');
  const suggested=H.recommendedCost(E,entries(),db.overrides,E.monthOf(today()),'essential');
  const suggestedIncome=H.recommendedIncome(E,entries(),db.overrides,E.monthOf(today()));
@@ -404,11 +404,11 @@ function goalForm(m){
  '<div class="field"><label>Saldo inicial real (R$)</label>'+moneyInput('initial',old.initial_cents||0)+'</div></div>'+
  '<div class="field-row"><div class="field"><label>Aporte mensal pretendido (R$)</label>'+moneyInput('monthly',old.monthly_cents??(suggestedContribution??0))+
  '<div class="albus-small">Sugestão de aporte: '+(suggestedContribution===null?'sem dados suficientes':mny(suggestedContribution))+
- '. Calculado após gastos, reservas existentes e imprevistos. '+(P.active(db.settings)?'Limite mensal global configurado: '+mny(cap.cents)+'.':'Você pode definir seu limite no quadro financeiro.')+
+ '. Referência: até 20% da receita mensal estimada, ajustável no quadro financeiro. Limite total atual: '+mny(cap.cents)+'. '+
  ' Confirme se o valor cabe no seu orçamento.</div></div>'+
  '<div class="field"><label>% do CDI (projeção)</label><input name="cdi_percent" type="number" min="0" max="300" step=".1" required value="'+(old.cdi_percent??100)+'"/></div></div>'+
  '<div class="albus-schedule-fields"><label class="field-checkbox"><input name="schedule_enabled" id="goal-schedule" type="checkbox" '+
- (existing?old.schedule_enabled===true?'checked':'': 'checked')+'/> '+(P.active(db.settings)?'Participar da fila de aportes mensais por prioridade':'Criar automaticamente um aporte mensal recorrente no calendário')+'</label>'+
+ (existing?old.schedule_enabled===true?'checked':'': 'checked')+'/> Programar aporte mensal nesta caixinha, respeitando o limite e a prioridade</label>'+
  '<div class="field"><label>Em qual dia deseja reservar?</label><input type="date" name="contribution_date" id="goal-contribution-date" value="'+esc(goalDate)+'" required/></div>'+
  '<div class="albus-small">'+(suggestedDate?'Sugestão: '+fmt(suggestedDate)+' (após a principal receita do mês). ':'')+'A data escolhida define o dia de cada mês, com ajuste para meses curtos. O aporte fica previsto no orçamento e só entra no saldo real quando confirmado.</div></div>'+
  '<div class="field"><label>CDI anual manual (%) para contingência</label><input name="manual_cdi_annual" type="number" min="0" max="100" step=".01" value="'+(old.manual_cdi_annual??'')+'" placeholder="Opcional, se a consulta falhar"/></div>'+
@@ -528,19 +528,15 @@ function submitReuse(e){
 function portfolioSettings(){
  const suggestion=P.suggestedLimit(db,E,H,E.monthOf(today()),db.settings);
  const current=P.budget(db,E,H,E.monthOf(today()));
- const proposed=suggestion.cents??0;
- const preview=H.recommendedIncome(E,P.baseEntries(db),db.overrides,E.monthOf(today()));
- return modal('Limite mensal de investimentos e prioridades',
+ return modal('Limite mensal de aportes',
  '<form id="portfolio-settings-form">'+
- '<div class="albus-warning">A reserva de emergência tem prioridade fixa. Os outros objetivos recebem aportes em sequência, conforme a ordem das caixinhas e o limite mensal. Não serão criados novos lançamentos recorrentes permanentes: as parcelas futuras são projeções até confirmação.</div>'+
+ '<div class="albus-warning">A fila de objetivos está sempre ativa: a reserva de emergência tem prioridade fixa. O limite mensal é distribuído conforme os aportes desejados para cada caixinha. A parte não utilizada permanece disponível, sem investimento obrigatório.</div>'+
  '<div class="field"><label>Limite total de aportes por mês (R$)</label>'+moneyInput('budget_limit',current.cents,'required')+'</div>'+
- '<p class="albus-small">Sugestão baseada no histórico: '+(suggestion.available?mny(proposed):'ainda não disponível')+
- '. Considera receitas e despesas anteriores, outras reservas e provisões de imprevistos. Estimativa, não disponibilidade garantida. Você pode definir seu limite manualmente.</p>'+
- '<div class="albus-review-columns"><div><small>Receita estimada</small><strong>'+mny(preview.cents)+'</strong></div>'+
- '<div><small>Despesas totais estimadas</small><strong>'+mny(suggestion.outflow.cents)+'</strong></div></div>'+
- '<label class="field-checkbox"><input type="checkbox" name="priority_mode" '+(P.active(db.settings)?'checked':'')+'/> Ativar fila de prioridades e distribuir automaticamente as previsões de aportes</label>'+
- '<p class="albus-small">Ao ativar, previsões automáticas antigas deixam de ser somadas. Aportes já realizados permanecem intactos. Ao desativar, voltam a ser exibidas as recorrências que já existiam.</p>'+
- '<div class="form-footer">'+button('Cancelar','close','','secondary-button')+' <button type="submit" class="primary-button">Salvar limite e prioridades</button></div>'+
+ '<p class="albus-small">Referência de planejamento: destinar até <b>20% da renda mensal</b> à poupança, investimentos e redução de dívidas (regra 50/30/20). Esta é uma diretriz educativa, não uma recomendação científica universal ou teto obrigatório. Ajuste conforme suas despesas, dívidas, estabilidade de renda e objetivos.</p>'+
+ '<div class="albus-review-columns"><div><small>Receita mensal estimada</small><strong>'+(suggestion.income.cents?mny(suggestion.income.cents):'Não informada')+'</strong></div>'+
+ '<div><small>Referência de 20% da renda</small><strong>'+(suggestion.available?mny(suggestion.cents):'Sem dados')+'</strong></div></div>'+
+ '<p class="albus-small">Você pode definir seu limite acima ou abaixo da referência. Os aportes de cada objetivo têm valores próprios e nunca serão aumentados automaticamente para consumir o teto.</p>'+
+ '<div class="form-footer">'+button('Cancelar','close','','secondary-button')+' <button type="submit" class="primary-button">Salvar limite</button></div>'+
  '</form>');
 }
 function savePortfolioSettings(ev){
@@ -548,10 +544,10 @@ function savePortfolioSettings(ev){
  try{
   const f=new FormData(ev.currentTarget),limit=E.parseMoney(f.get('budget_limit'));
   const next={...db,settings:{...db.settings,goal_budget_limit_cents:limit,
-   goal_allocation_mode:f.has('priority_mode')?'priority':'legacy'}};
+   goal_allocation_mode:'priority'}};
   B.save(localStorage,next);
   Object.assign(db,next);
-  state.modal=null;state.message=P.active(db.settings)?'Fila ativada. A reserva de emergência recebe aportes primeiro, respeitando o limite definido.':'Limite salvo. A fila de prioridades está desativada.';
+  state.modal=null;state.message='Limite mensal atualizado. A fila continua ativa e distribui os aportes conforme sua prioridade e intenção.';
   render();
  }catch(e){error(e)}
 }
@@ -725,12 +721,12 @@ function submitGoal(ev){
  const goal={...(old||{}),id:old?.id||id(),...value,
   priority_index:old?.priority_index??db.goals.length};
  const next={...db,goals:old?db.goals.map(g=>g.id===goal.id?goal:g):[...db.goals,goal]};
- const planned=P.active(db.settings)?next:H.syncSchedule(next,goal,E,today(),id);
+ const planned=next; // A fila universal gera previsões virtuais; não cria séries duplicadas.
  // A meta, o calendário recorrente e os dados anteriores são salvos juntos.
  B.save(localStorage,planned);
  Object.assign(db,planned);
  state.modal=null;
- state.message=goal.schedule_enabled?(P.active(db.settings)?'Objetivo salvo na fila de prioridades. O calendário mostra aportes até o limite mensal configurado.':'Objetivo salvo e aporte mensal previsto no calendário. Confirme cada depósito para atualizar o saldo real.'):'Objetivo salvo. Os aportes podem ser registrados a qualquer momento.';
+ state.message=goal.schedule_enabled?'Objetivo salvo. Os aportes previstos respeitam a prioridade e o limite mensal.':'Objetivo salvo sem aporte mensal programado.';
  render();
  }catch(e){error(e)}
 }
@@ -874,8 +870,18 @@ function bind(){
     db[table]=db[table].filter(x=>x.id!==item);state.modal=null;safe();return render();
   }
   if(action==='delete-goal'){
-    if(db.entries.some(x=>x.goal_id===item)){state.error='Exclua ou desvincule os aportes antes de excluir a caixinha.';return render();}
-    if(!confirm('Excluir caixinha?'))return;db.goals=db.goals.filter(x=>x.id!==item);state.modal=null;safe();return render();
+    const current=db.goals.find(g=>g.id===item);
+    if(!current)return;
+    if(!confirm('Excluir o objetivo "'+current.title+'"? Previsões futuras serão canceladas, e aportes realizados serão mantidos como histórico independente.'))return;
+    try{
+      const result=P.removeGoal(db,item,id);
+      B.save(localStorage,result.data);
+      Object.assign(db,result.data);
+      state.modal=null;
+      state.message='Objetivo excluído. '+result.cancelled+' recorrência(s) cancelada(s) e aportes realizados preservados.';
+      render();
+    }catch(e){state.error='Não foi possível excluir: '+e.message;render();}
+    return;
   }
  }));
  root.querySelectorAll('[data-help]').forEach(btn=>btn.addEventListener('click',ev=>{ev.stopPropagation();openHelp(btn);}));
