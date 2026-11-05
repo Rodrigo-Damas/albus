@@ -496,3 +496,14 @@
  .albus-summary-settings{font-size:9px;padding:3px 5px;}
  .albus-priority-controls{justify-content:flex-end;}
 }
+
+/* Confirmação nativa do Albus e métricas de prioridade das caixinhas. */
+.albus-delete-confirm{padding:12px 2px 5px;display:flex;flex-direction:column;gap:12px;}
+.albus-delete-confirm p{margin:0;font-size:13px;line-height:1.7;color:#53647e;}
+.albus-delete-confirm p b{color:#34435f;}
+.albus-danger-confirm{background:#c64a57!important;border-color:#c64a57!important;color:#fff!important;}
+.albus-danger-confirm:hover{background:#ab3746!important;border-color:#ab3746!important;}
+.albus-goal-card .albus-goal-possible{color:#23845d;font-weight:750;}
+.albus-goal-card .albus-goal-priority{color:#6474aa;font-size:10px;font-weight:800;margin-top:3px;}
+.albus-emergency-goal .albus-goal-priority{color:#258b61;}
+@media(max-width:690px){.albus-delete-confirm .form-footer{flex-wrap:wrap;gap:8px;}}
