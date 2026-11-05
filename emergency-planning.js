@@ -17,6 +17,13 @@
     const current=read(month);
     return {cents:current,months:current>0?1:0,source:current>0?'mês atual (parcial)':'sem histórico'};
   }
+  function suggestedContributionDate(engine,entries,overrides,month){
+    const income=engine.occurrencesForMonth(entries,overrides,month,{},'cash')
+      .filter(x=>x.entry_type==='income'&&x.amount_cents>0)
+      .sort((a,b)=>b.amount_cents-a.amount_cents||a.display_date.localeCompare(b.display_date))[0];
+    // Um dia após a principal entrada prevista. O usuário pode alterar livremente.
+    return income?engine.shiftDate(income.display_date,1):null;
+  }
   function emergencyTarget(cost,months){
     if(!VALID_MONTHS.has(Number(months)))throw Error('Escolha 6, 12, 18 ou 24 meses.');
     const amount=cents(cost)*Number(months);
@@ -69,5 +76,5 @@
     const day=engine.dateParts(goal.contribution_date)?Number(goal.contribution_date.slice(-2)):1;
     return engine.dateInMonth(forecast.estimatedMonth,day);
   }
-  scope.AlbusEmergency={essential,VALID_MONTHS,recommendedCost,emergencyTarget,isEmergency,scheduledItems,scheduledForMonth,syncSchedule,milestone};
+  scope.AlbusEmergency={essential,VALID_MONTHS,recommendedCost,suggestedContributionDate,emergencyTarget,isEmergency,scheduledItems,scheduledForMonth,syncSchedule,milestone};
 })(typeof globalThis!=='undefined'?globalThis:this);
