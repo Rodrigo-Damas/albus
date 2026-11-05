@@ -448,29 +448,18 @@ function goalDetails(m){
  button('Editar','edit-goal','data-id="'+esc(goal.id)+'"','secondary-button')+button('+ Registrar aporte','add-contribution','data-id="'+esc(goal.id)+'"','primary-button')+'</div>');
 }
 function emergencyReview(m){
+ // A atualização é uma edição dos valores assumidos pelo usuário.
+ // Não substituímos automaticamente o custo escolhido por uma média de lançamentos.
+ return goalForm({...m,review:true});
+}
+function confirmGoalDeletion(m){
  const goal=db.goals.find(x=>x.id===m.id);
- if(!goal||!H.isEmergency(goal))return '';
- const month=E.monthOf(today());
- const cost=H.recommendedCost(E,entries(),db.overrides,month,'essential');
- const revenue=H.recommendedIncome(E,entries(),db.overrides,month);
- const capacity=H.contributionCapacity(E,entries(),db.overrides,month,goal.id,db.settings);
- const suggestedGoal=cost.months?H.emergencyTarget(cost.cents,goal.coverage_months||6):null;
- const showSamples=(data,label)=>'<div class="albus-review-basis"><strong>'+label+'</strong><span>'+esc(data.source)+'</span>'+
- (data.samples.length?data.samples.map(x=>'<span>'+esc(monthTitle(x.month))+': '+mny(x.cents)+'</span>').join(''):'<span>Sem dados suficientes: preencha manualmente.</span>')+'</div>';
- return modal('Atualizar reserva de emergência',
- '<div class="albus-warning">Esta revisão utiliza até três meses anteriores com lançamentos. Isso não garante que todos os gastos ou recebimentos tenham sido cadastrados. Nenhuma alteração será salva sem sua confirmação.</div>'+
- '<div class="albus-review-columns"><div><small>Custo essencial atual</small><strong>'+mny(goal.monthly_cost_cents||0)+'</strong></div>'+
- '<div><small>Nova sugestão de custo</small><strong>'+ (cost.months?mny(cost.cents):'Sem histórico')+'</strong></div>'+
- '<div><small>Receita cadastrada como referência</small><strong>'+mny(goal.income_reference_cents||0)+'</strong></div>'+
- '<div><small>Nova sugestão de receita</small><strong>'+(revenue.months?mny(revenue.cents):'Sem histórico')+'</strong></div>'+
- '<div><small>Meta atual</small><strong>'+mny(goal.target_cents||0)+'</strong></div>'+
- '<div><small>Nova meta sugerida</small><strong>'+(suggestedGoal!==null?mny(suggestedGoal):'Sem histórico')+'</strong></div></div>'+
- showSamples(cost,'Despesas essenciais consideradas')+showSamples(revenue,'Receitas consideradas')+
- '<p class="albus-small">Custo: com dois ou três meses, 70% da média + 30% do maior mês. Receita: média simples. Com um mês, usa-se esse mês; sem histórico, os valores precisam ser preenchidos manualmente.</p>'+
- '<div class="albus-review-capacity"><b>Margem mensal estimada para aportes: '+(capacity.cents===null?'Não disponível':mny(capacity.cents))+'</b>'+
- '<span>Margem calculada com receitas, despesas totais, outras reservas e imprevistos. É uma referência, não uma promessa de disponibilidade nem uma alteração automática no aporte.</span></div>'+
- '<div class="form-footer">'+button('Cancelar','close','','secondary-button')+
- button('Revisar meta e aporte','apply-emergency-review','data-id="'+esc(goal.id)+'"','primary-button')+'</div>');
+ if(!goal)return '';
+ return modal('Excluir objetivo?',
+ '<div class="albus-delete-confirm"><p>Deseja realmente excluir a caixinha <b>'+esc(goal.title)+'</b>?</p>'+
+ '<p>Os aportes futuros serão cancelados. Valores já realizados permanecerão no histórico como lançamentos independentes.</p>'+
+ '<div class="form-footer">'+button('Cancelar','cancel-goal-delete','','secondary-button')+
+ button('Sim, excluir caixinha','approve-goal-delete','data-id="'+esc(goal.id)+'"','primary-button albus-danger-confirm')+'</div></div>');
 }
 function contributionForm(m){
  const goal=db.goals.find(x=>x.id===m.id);if(!goal)return '';
@@ -613,6 +602,7 @@ function render(){
  state.modal?.type==='goal'?goalForm(state.modal):
  state.modal?.type==='goal-details'?goalDetails(state.modal):
  state.modal?.type==='emergency-review'?emergencyReview(state.modal):
+ state.modal?.type==='confirm-goal-delete'?confirmGoalDeletion(state.modal):
  state.modal?.type==='contribution'?contributionForm(state.modal):
  state.modal?.type==='settings'?settingsForm():
  state.modal?.type==='portfolio-settings'?portfolioSettings():
@@ -851,7 +841,7 @@ function bind(){
    return;
   }
   if(action==='goal-details')return open('goal-details',{id:item});
-  if(action==='review-emergency')return open('emergency-review',{id:item});
+  if(action==='review-emergency')return open('goal',{id:item,review:true});
   if(action==='apply-emergency-review')return open('goal',{id:item,review:true});
   if(action==='edit-goal')return open('goal',{id:item});
   if(action==='add-contribution')return open('contribution',{id:item});
@@ -874,16 +864,15 @@ function bind(){
     if(table==='events'){db.entries=db.entries.filter(x=>x.event_id!==item);db.overrides=db.overrides.filter(x=>db.entries.some(e=>e.id===x.entry_id));}
     db[table]=db[table].filter(x=>x.id!==item);state.modal=null;safe();return render();
   }
-  if(action==='delete-goal'){
-    const current=db.goals.find(g=>g.id===item);
-    if(!current)return;
-    if(!confirm('Excluir o objetivo "'+current.title+'"? Previsões futuras serão canceladas, e aportes realizados serão mantidos como histórico independente.'))return;
+  if(action==='delete-goal')return open('confirm-goal-delete',{id:item});
+  if(action==='cancel-goal-delete')return open('goal',{id:state.modal?.id});
+  if(action==='approve-goal-delete'){
     try{
       const result=P.removeGoal(db,item,id);
       B.save(localStorage,result.data);
       Object.assign(db,result.data);
       state.modal=null;
-      state.message='Objetivo excluído. '+result.cancelled+' recorrência(s) cancelada(s) e aportes realizados preservados.';
+      state.message='Objetivo excluído. Aportes realizados foram preservados no histórico.';
       render();
     }catch(e){state.error='Não foi possível excluir: '+e.message;render();}
     return;
@@ -918,6 +907,7 @@ function bind(){
  listen('#goal-type',updateGoalUI);
  listen('#coverage-months',updateGoalUI);
  root.querySelector('input[name="monthly_cost"]')?.addEventListener('input',updateGoalUI);
+ root.querySelector('input[name="target"]')?.addEventListener('input',ev=>{ev.target.dataset.userEdited='yes';});
  listen('#entry-type',updateEntryUI);listen('#entry-category',updateEntryUI);listen('#payment-method',updateEntryUI);listen('#entry-frequency',updateEntryUI);listen('#entry-date',updateEntryUI);
  listen('#visibility',e=>{const inputs=root.querySelectorAll('input[name="responsible_ids"]');inputs.forEach(i=>{if(e.target.value==='private'){i.checked=i.value===state.user;i.disabled=i.value!==state.user}else i.disabled=false;});const all=root.querySelector('#all-members');if(all)all.disabled=e.target.value==='private';});
  listen('#all-members',e=>{root.querySelectorAll('input[name="responsible_ids"]').forEach(i=>{if(!i.disabled)i.checked=e.target.checked})});
