@@ -189,3 +189,18 @@ A alteração preserva `albus-calendar-local-v1`, não altera lançamentos anter
 **Limites:** projeção de CDI é estimada e não considera tributação. Um objetivo sem aporte mensal definido ou desativado bloqueia os seguintes; revise o cadastro para retomar a fila. O limite pode ser superior à capacidade financeira estimada se o usuário o definir manualmente, caso em que o saldo do orçamento poderá ficar negativo. Em uma edição de meta, a mudança de prioridade atualiza a projeção e não transfere valores já realizados.
 
 **Arquivos e testes:** `goal-priorities.js`, `app-v3.js`, `app-v2.css`, `index.html`, `tests/priority-budget.test.cjs`. Testes da sequência de metas, limite, reutilização do saldo no mês de conclusão, aportes já confirmados, reordenação e imutabilidade do armazenamento passaram em avaliação isolada. Ainda é recomendada validação visual dos gestos no navegador e, especialmente, em telas sensíveis ao toque.
+
+## Fila permanente, distribuição por intenção e exclusão segura (05/11/2026)
+
+A **fila de prioridades não pode ser desligada**. A reserva de emergência é sempre a primeira; as demais podem ser reordenadas. Removida a opção de ativação/desativação do painel **⚙ Ajustar limite**, mantendo somente o limite global editável.
+
+**Sugestão do limite:** em vez de deduzir a margem do histórico de despesas, o Albus apresenta como referência educativa **20% da renda líquida mensal estimada**, segundo a regra orçamentária 50/30/20. Não se trata de um percentual cientificamente ideal para todos, nem de teto obrigatório: cada pessoa ajusta o limite considerando sua situação financeira. A renda é estimada pelos lançamentos de receitas; caso a reserva de emergência contenha uma referência manual de renda, esta serve de alternativa quando não há receitas registradas. Sem qualquer informação de renda, a sugestão será zero, e o usuário poderá preencher manualmente.
+
+**Distribuição por intenção:** cada caixinha guarda seu aporte mensal pretendido. O motor percorre as caixinhas por prioridade, oferecendo a cada uma **até** o valor pretendido, a lacuna restante da meta e o orçamento ainda disponível. Ao contrário da versão anterior, o objetivo seguinte pode receber o saldo mensal **mesmo que o primeiro ainda não tenha sido concluído**, desde que o primeiro já tenha recebido tudo o que foi solicitado naquele mês. Exemplos com limite global de R$ 5.000:
+- Reserva R$ 4.000 + casa R$ 2.000 → reserva recebe R$ 4.000; casa, R$ 1.000.
+- Reserva R$ 5.000 + casa R$ 2.000 → reserva recebe R$ 5.000; casa, R$ 0.
+- Reserva concluída + casa R$ 2.000 → casa recebe R$ 2.000; **R$ 3.000 não são aportados automaticamente**.
+
+**Exclusão de objetivos:** a caixinha pode ser excluída mesmo quando possui depósitos relacionados. Exige confirmação. Séries recorrentes vinculadas à caixinha são canceladas, mantendo os depósitos já confirmados em novos registros históricos independentes; aportes únicos já cadastrados permanecem, agora desvinculados. Os dados são salvos em operação local com snapshot e não se apagam eventos ou despesas de outras categorias. O botão **Excluir caixinha** continua disponível no formulário **Editar objetivo**. O motor `goal-priorities.js` implementa essa operação em `removeGoal`.
+
+Arquivos alterados: `goal-priorities.js`, `app-v3.js`; testes: `tests/always-on-goal-queue.test.cjs`, atualização de `tests/priority-budget.test.cjs`. Os cenários foram validados com simulações; o ambiente oficial continua intocado.
