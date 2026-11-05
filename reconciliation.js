@@ -8,7 +8,8 @@
   return n;
  }
  function isReconciled(x){
-  return !!x&&((Object.prototype.hasOwnProperty.call(x,'realized_amount_cents')&&
+  return !!x&&(['paid','received','set_aside','skipped'].includes(x.status)||
+   (Object.prototype.hasOwnProperty.call(x,'realized_amount_cents')&&
    Number.isSafeInteger(Number(x.realized_amount_cents)))||x.reconciliation_state==='confirmed'||x.reconciliation_state==='not_done');
  }
  function byMonth(data,goalId,month){
