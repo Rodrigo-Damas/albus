@@ -88,7 +88,7 @@ function showGoalCard(g){
  '<span class="albus-goal-label">'+(emergency?'♧ Reserva de emergência':'◈ '+esc(g.title))+'</span>'+
  '<strong>'+mny(f.actual)+'</strong><span class="albus-goal-hint">de '+mny(f.target)+' · '+Math.round(percent)+'%</span>'+
  '<span class="albus-progress"><span style="width:'+percent+'%"></span></span>'+
- '<small>Aporte definido: '+mny(f.monthly)+'/mês</small>'+
+ '<small>Aporte desejado: '+mny(f.monthly)+'/mês</small>'+
  '<small class="albus-goal-possible">Aporte possível em '+esc(monthTitle(state.month))+': '+mny(available)+'</small>'+
  (f.estimatedMonth&&!reached?'<small>Previsão: '+esc(monthTitle(f.estimatedMonth))+'</small>':
  reached?'<small>Meta concluída</small>':'<small>Previsão indisponível</small>')+
