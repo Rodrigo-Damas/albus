@@ -332,7 +332,9 @@ function goalForm(m){
  const isEmergency=H.isEmergency(old)||(!existing&&m.kind==='emergency');
  const suggested=H.recommendedCost(E,entries(),db.overrides,E.monthOf(today()),'essential');
  const cost=old.monthly_cost_cents??suggested.cents;
- const months=old.coverage_months||6,goalDate=old.contribution_date||state.day;
+ const months=old.coverage_months||6;
+ const suggestedDate=H.suggestedContributionDate(E,entries(),db.overrides,E.monthOf(state.day));
+ const goalDate=old.contribution_date||suggestedDate||state.day;
  const emergencyExists=db.goals.some(g=>H.isEmergency(g)&&g.id!==m.id);
  return modal(existing?'Editar objetivo':'Criar caixinha',
  '<form id="goal-form"><div class="field"><label>Tipo de objetivo</label><select name="goal_type" id="goal-type">'+
@@ -356,7 +358,7 @@ function goalForm(m){
  '<div class="albus-schedule-fields"><label class="field-checkbox"><input name="schedule_enabled" id="goal-schedule" type="checkbox" '+
  (existing?old.schedule_enabled===true?'checked':'': 'checked')+'/> Criar automaticamente um aporte mensal recorrente no calendário</label>'+
  '<div class="field"><label>Em qual dia deseja reservar?</label><input type="date" name="contribution_date" id="goal-contribution-date" value="'+esc(goalDate)+'" required/></div>'+
- '<div class="albus-small">A data escolhida define o dia de cada mês, com ajuste para o último dia nos meses mais curtos. O aporte fica previsto no orçamento e só entra no saldo real quando você o confirmar.</div></div>'+
+ '<div class="albus-small">'+(suggestedDate?'Sugestão: '+fmt(suggestedDate)+' (após a principal receita do mês). ':'')+'A data escolhida define o dia de cada mês, com ajuste para meses curtos. O aporte fica previsto no orçamento e só entra no saldo real quando confirmado.</div></div>'+
  '<div class="field"><label>CDI anual manual (%) para contingência</label><input name="manual_cdi_annual" type="number" min="0" max="100" step=".01" value="'+(old.manual_cdi_annual??'')+'" placeholder="Opcional, se a consulta falhar"/></div>'+
  ownerInputs(existing||null)+
  '<div class="albus-warning">Saldo real e projeção são separados. Rendimentos estimados não entram automaticamente no patrimônio. Atualize o saldo conforme o extrato do banco ou fundo de investimentos.</div>'+
