@@ -30,7 +30,7 @@
     if(!Number.isSafeInteger(amount)||amount>99999999999)throw Error('Meta acima do limite permitido.');
     return amount;
   }
-  function isEmergency(goal){return goal?.goal_type==='emergency';}
+  function isEmergency(goal){return goal?.goal_type==='emergency'||(!goal?.goal_type&&String(goal?.title||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim()==='reserva de emergencia');}
   function scheduledItems(db,goalId){return (db.entries||[]).filter(e=>e.goal_id===goalId&&e.auto_scheduled===true&&e.frequency==='monthly');}
   function monthBefore(engine,month){return engine.addMonths(month,-1);}
   function scheduledForMonth(engine,entry,month){
