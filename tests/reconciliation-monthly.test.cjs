@@ -58,7 +58,9 @@ test('dados legados realizados não geram nova reserva no mesmo mês',()=>{
  const first=db();first.entries.push({id:'old',goal_id:'goal',entry_type:'reserve',
   entry_date:E.dateInMonth(month,1),amount_cents:50000,status:'set_aside',frequency:'none'});
  assert.equal(P.rowsForMonth(P.simulate(first,E,G,H,month,null,4),month).length,0);
- assert.throws(()=>Z.reconcileGoal(first,'goal',month,50000,today,null,()=>'bad',E));
+ const updated=Z.reconcileGoal(first,'goal',month,45000,today,null,()=>'new',E);
+ assert.equal(updated.entries.length,1);
+ assert.equal(updated.entries[0].id,'old');
 });
 test('interface exibe atualizado mensal e não confirmar aporte por dia',()=>{
  const app=read('app-v3.js'),css=read('app-v2.css'),html=read('index.html');
