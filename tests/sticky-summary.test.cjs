@@ -1,40 +1,41 @@
 // node --test tests/sticky-summary.test.cjs
-const test=require('node:test');
-const assert=require('node:assert/strict');
-const fs=require('node:fs');
-const path=require('node:path');
-const root=path.join(__dirname,'..');
-const load=n=>fs.readFileSync(path.join(root,n),'utf8');
+const test=require('node:test'),assert=require('node:assert/strict');
+const fs=require('node:fs'),path=require('node:path');
+const root=path.resolve(__dirname,'..'),load=n=>fs.readFileSync(path.join(root,n),'utf8');
 const app=load('app-v3.js'),css=load('app-v2.css'),html=load('index.html');
-test('resumo financeiro aparece antes de objetivos e calendário',()=>{
- const s=app.slice(app.indexOf('function render(){'),app.indexOf('function error('));
- assert.match(s,/albus-financial-sticky/);
- assert.match(s,/albus-sticky-sentinel/);
- assert.ok(s.indexOf('dashboardCards()')<s.indexOf('goalCards()'));
- assert.ok(s.indexOf('goalCards()')<s.indexOf('filters()+calendar()+details()'));
+test('indicadores financeiros aparecem antes dos objetivos e calendário',()=>{
+ const start=app.indexOf('function render(){'),end=app.indexOf('\nfunction ',start+12);
+ const segment=app.slice(start,end>start?end:undefined);
+ assert.match(segment,/albus-financial-sticky/);
+ assert.match(segment,/albus-sticky-sentinel/);
+ assert.ok(segment.indexOf('dashboardCards()')<segment.indexOf('goalCards()'));
+ assert.ok(segment.indexOf('goalCards()')<segment.indexOf('calendar()+'));
 });
-test('sticky fixa apenas resumo financeiro e origem dos pagamentos',()=>{
- assert.ok(css.includes('.albus-financial-sticky{'));
+test('faixa de indicadores é fixa; origem dos pagamentos abre em modal',()=>{
+ assert.match(css,/\.albus-financial-sticky\{/);
  assert.match(css,/position:sticky;top:0;z-index:22/);
- assert.ok(app.includes("return '<section class=\"albus-summary albus-compact-summary\"'"));
- assert.ok(app.includes('<section class="albus-month-origin">'));
+ assert.ok(app.includes("data-action=\"summary\""));
+ assert.ok(app.includes("function monthlySummaryModal(m)"));
+ assert.ok(!app.includes("'<section class=\"albus-month-origin\""));
 });
-test('cores nos números de receitas, despesas, reservas e saldo',()=>{
- const colors={income:'#169c72',expense:'#df5e62',reserve:'#5964d8',balance:'#df5e62'};
+test('cores de receita, pagamento, reserva e saldo',()=>{
+ const colors={income:'#169c72',expense:'#df5e62',reserve:'#5964d8'};
  for(const [kind,color] of Object.entries(colors)){
-  const selector='.summary-card.'+kind+' .summary-value{color:'+color+';}';
-  assert.ok(css.includes(selector),selector);
+   assert.ok(css.includes('.summary-card.'+kind+' .summary-value{color:'+color+';}'));
  }
+ assert.ok(css.includes('.summary-card.balance .summary-value {color:#169c72;}'));
+ assert.ok(css.includes('.summary-card.balance.negative .summary-value {color:#c23a46;}'));
 });
-test('quando fixado o resumo reduz de altura',()=>{
+test('ao fixar reduz conteúdo auxiliar',()=>{
  assert.ok(css.includes('.albus-financial-sticky.is-stuck .albus-compact-summary .summary-card'));
  assert.ok(css.includes('.albus-financial-sticky.is-stuck .albus-compact-summary .summary-meta{display:none;}'));
 });
-test('layout compacto funciona em largura de telefone',()=>{
+test('layout móvel e painel diário alinhado no topo',()=>{
  assert.match(css,/@media\(max-width:690px\)/);
- assert.ok(css.includes('.albus-financial-sticky .albus-payment-origin{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));'));
+ assert.ok(css.includes('.albus-calendar-workspace.has-details'));
+ assert.ok(css.includes('position:static!important;top:auto!important'));
 });
-test('o armazenamento legado não foi substituído por nova chave',()=>{
+test('chave de armazenamento antiga e exportação permanecem',()=>{
  assert.ok(app.includes("const KEY='albus-calendar-local-v1'"));
  assert.ok(app.includes('B.save(localStorage,db)'));
  assert.ok(html.includes('src="/backup.js"'));
