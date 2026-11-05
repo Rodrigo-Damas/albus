@@ -433,3 +433,28 @@
 .albus-row .albus-tiny-button[aria-label="Desvincular despesa"]{font-size:13px;}
 .albus-row .albus-tiny-button[aria-label="Reutilizar despesa"]:focus-visible,
 .albus-row .albus-tiny-button[aria-label="Desvincular despesa"]:focus-visible{outline:2px solid #6371d8;outline-offset:2px;}
+
+/* Reserva de emergência: destaque visual e conquista projetada no calendário. */
+.albus-emergency-suggestion {
+ border-color:#b5decf;background:#f0faf5;color:#137456;
+ font-weight:800;text-align:left;line-height:1.5;
+}
+.albus-emergency-suggestion:hover{background:#e6f5ed;border-color:#78c2a2;}
+.albus-emergency-goal{border-color:#a7d6c0;background:#f5fbf7;}
+.albus-emergency-goal .albus-goal-label{color:#16845f;}
+.albus-emergency-goal .albus-progress span{background:#159a72;}
+.albus-emergency-fields{padding:10px 12px;border-radius:12px;background:#f7fbf9;border:1px solid #d9ebe1;margin:10px 0;}
+.albus-emergency-fields .albus-warning{margin-bottom:11px;}
+.albus-emergency-fields .albus-small{line-height:1.6;padding:4px 0;}
+.albus-schedule-fields{background:#f7f9fd;border:1px solid #e2e8f3;border-radius:12px;padding:12px;margin:13px 0;}
+.albus-schedule-fields .field-checkbox{margin:0 0 11px;}
+.albus-schedule-fields .albus-small{display:block;margin:5px 0;color:#8a97ad;line-height:1.5;}
+.albus-success-goal{font-size:11px;background:#eff9f3;border:1px solid #cae8d5;color:#257b56;padding:10px 12px;border-radius:10px;line-height:1.5;margin-top:9px;}
+.albus-goal-milestone{display:block;width:100%;min-width:0;background:#e4f5eb;border:1px solid #91d0aa;color:#17754f;border-radius:6px;margin-top:3px;text-align:left;font-size:9px;font-weight:800;padding:3px 5px;line-height:1.25;white-space:normal;cursor:pointer;}
+.albus-goal-milestone:hover{background:#cdefda;border-color:#50b883;}
+.albus-financial-sticky .summary-card.reserve .summary-kicker{font-size:10px;line-height:1.2;}
+@media(max-width:690px){
+ .albus-goal-milestone{font-size:8px;padding:2px 3px;}
+ .albus-emergency-fields{padding:8px;}
+ .albus-financial-sticky .summary-card.reserve .summary-kicker{font-size:9px;}
+}
