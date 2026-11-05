@@ -1,7 +1,7 @@
 
 (function(){
 'use strict';
-const E=AlbusEngine,A=AlbusAccess,G=AlbusGoals,M=AlbusMoneyMask,B=AlbusBackup,R=AlbusExpenseReuse;
+const E=AlbusEngine,A=AlbusAccess,G=AlbusGoals,M=AlbusMoneyMask,B=AlbusBackup,R=AlbusExpenseReuse,H=AlbusEmergency;
 const KEY='albus-calendar-local-v1',root=document.getElementById('app');
 const TYPES={event:'Evento',expense:'Despesa',income:'Receita',goal:'Objetivo',task:'Tarefa',reserve:'Reserva ou investimento'};
 const CATEGORIES=['Salário','Alimentação','Transporte','Saúde','Moradia','Lazer','Educação','Casa','Pessoal','Outros','Precaução'];
@@ -48,17 +48,31 @@ function createMenu(){
  [['expense','Despesa','Compra, Pix ou cartão'],['income','Receita','Salário ou outra entrada'],['event','Evento','Uma ocasião e seus gastos'],['goal','Objetivo','Caixinha de investimentos'],['task','Tarefa','Um compromisso sem valor financeiro']]
  .map(([type,label,desc])=>'<button data-action="create" data-kind="'+type+'"><strong>'+label+'</strong><small>'+desc+'</small></button>').join('')+'</div>':'')+'</div>';
 }
+function project(g){
+ // Data-base fixa para a previsão; navegar para outro mês não altera o prazo.
+ return G.forecast(g,db.entries,state.cdi,E.monthOf(today()),db.overrides);
+}
 function showGoalCard(g){
- const f=G.forecast(g,db.entries,state.cdi,state.month,db.overrides),percent=Math.min(100,Math.max(0,f.progress));
- return '<button class="albus-goal-card" data-action="goal-details" data-id="'+esc(g.id)+'"><span class="albus-goal-label">◈ '+esc(g.title)+'</span>'+
+ const f=project(g),percent=Math.min(100,Math.max(0,f.progress)),priority=H.isEmergency(g);
+ const reached=percent>=100;
+ return '<button class="albus-goal-card'+(priority?' albus-emergency-goal':'')+'" data-action="goal-details" data-id="'+esc(g.id)+'">'+
+ '<span class="albus-goal-label">'+(priority?'♧ Reserva de emergência':'◈ '+esc(g.title))+'</span>'+
  '<strong>'+mny(f.actual)+'</strong><span class="albus-goal-hint">de '+mny(f.target)+' · '+Math.round(percent)+'%</span>'+
- '<span class="albus-progress"><span style="width:'+percent+'%"></span></span><small>Aporte: '+mny(f.monthly)+'/mês</small></button>';
+ '<span class="albus-progress"><span style="width:'+percent+'%"></span></span>'+
+ '<small>'+(reached?'Meta alcançada · crie novos objetivos':('Aporte: '+mny(f.monthly)+'/mês'))+'</small>'+
+ (f.estimatedMonth&&!reached?'<small>Previsão: '+esc(monthTitle(f.estimatedMonth))+'</small>':'')+'</button>';
 }
 function goalCards(){
- return '<section class="albus-goals"><div class="albus-goals-head"><div><strong>Objetivos</strong><span>Caixinhas com saldo real e projeções separadas</span></div>'+
+ const listed=goals().slice().sort((x,y)=>Number(H.isEmergency(y))-Number(H.isEmergency(x)));
+ const hasEmergency=db.goals.some(H.isEmergency);
+ return '<section class="albus-goals"><div class="albus-goals-head"><div><strong>Objetivos e reservas</strong><span>Caixinhas, aportes recorrentes e previsões</span></div>'+
  button('+ Nova caixinha','create','data-kind="goal"','albus-tiny-button')+'</div><div class="albus-goals-grid">'+
- (goals().map(showGoalCard).join('')||'<button class="albus-goal-placeholder" data-action="create" data-kind="goal">+ Crie um objetivo: casa própria, emergência, viagem...</button>')+
- '</div><div class="albus-cdi-meta">'+(state.cdi?'CDI de referência: '+state.cdi.annualPercent.toFixed(2).replace('.',',')+'% a.a. (estimado), dado '+esc(state.cdi.rateDate||'em cache')+(state.cdi.stale?' · atualização indisponível':''):'CDI automático: aguardando consulta. Você pode informar uma taxa manual.')+'</div></section>';
+ (!hasEmergency?'<button type="button" class="albus-goal-placeholder albus-emergency-suggestion" data-action="new-emergency">♧ Comece pela Reserva de emergência · 6, 12, 18 ou 24 meses de despesas</button>':'')+
+ listed.map(showGoalCard).join('')+
+ (!listed.length&&hasEmergency?'<span class="albus-small">Objetivos ocultos pelo filtro de participantes.</span>':'')+
+ '</div><div class="albus-cdi-meta">'+(state.cdi?'CDI de referência: '+state.cdi.annualPercent.toFixed(2).replace('.',',')+'% a.a. (estimado), dado '+esc(state.cdi.rateDate||'em cache')+(state.cdi.stale?' · atualização indisponível':''):'CDI automático: aguardando consulta. Você pode informar uma taxa manual.')+
+ ' <span>Atualize o saldo com os rendimentos reais do seu banco ou investimento.</span></div>'+
+ (listed.some(g=>project(g).progress>=100)?'<div class="albus-success-goal">Meta atingida. Considere criar outro objetivo, como casa própria, carro ou viagem, e revise o valor da reserva periodicamente.</div>':'')+'</section>';
 }
 function cashSources(rows,month){
  const expenses=rows.filter(x=>x.entry_type==='expense');
@@ -81,7 +95,7 @@ function dashboardCards(){
  const data=[
  ['Receitas de '+m,s.income,'Entradas previstas','income'],
  ['Pagamentos previstos',s.expense,'Pagos: '+mny(s.paid),'expense'],
- ['Reservas e imprevistos',s.reserve+s.provision,'Provisão: '+mny(s.provision),'reserve'],
+ ['Reservas, objetivos e imprevistos',s.reserve+s.provision,'Objetivos: '+mny(s.reserve)+' · Imprevistos: '+mny(s.provision),'reserve'],
  [balance<0?'Déficit a cobrir':balance===0?'Orçamento distribuído':'Valor a destinar',balance,
   balance<0?'Receitas insuficientes para cobrir as saídas previstas':balance===0?'Planejamento equilibrado':'Disponível para distribuir','balance']
  ];
@@ -156,12 +170,27 @@ function calendar(){
    out.push('<div role="button" tabindex="0" class="albus-day '+(date===state.day?'selected ':'')+(date===today()?'today':'')+'" data-action="day" data-date="'+date+'" data-drop-date="'+date+'"><span class="albus-day-number">'+d+'</span>'+
     (inc?'<span class="albus-money in">+ '+mny(inc)+'</span>':'')+(exp?'<span class="albus-money out">− '+mny(exp)+'</span>':'')+
     chips.slice(0,2).map(x=>'<span class="albus-chip '+x.kind+'" data-drag-kind="'+x.kind+'" data-drag-id="'+esc(x.id)+'" data-occurrence="'+esc(x.occurrence||'')+'" title="Arraste para reagendar">'+esc(x.title)+'</span>').join('')+
-    (chips.length>2?'<span class="albus-overflow">+'+(chips.length-2)+' itens</span>':'')+'</div>');
+    (chips.length>2?'<span class="albus-overflow">+'+(chips.length-2)+' itens</span>':'')+
+    goalMilestones(date)+'</div>');
  }
  return '<article class="surface calendar"><div class="albus-month"><div><h2>'+esc(monthTitle(state.month))+'</h2><div class="albus-small">Selecione o dia. Arraste itens para outra data.</div></div>'+
  '<div class="albus-month-actions">'+button('Hoje','today','','outline-button albus-calendar-today')+button('‹','previous','','icon-button')+button('›','next','','icon-button')+'</div></div>'+
  '<div class="albus-date-grid">'+['DOM','SEG','TER','QUA','QUI','SEX','SÁB'].map(x=>'<div class="albus-weekday">'+x+'</div>').join('')+out.join('')+
  '</div><div class="albus-calendar-foot"><span>Verde: entradas · Vermelho: pagamentos</span><span>Arraste para reagendar</span></div></article>';
+}
+function goalMilestones(day){
+ const list=goals().filter(g=>{
+  const f=project(g);
+  const when=f.progress>=100
+    ?E.dateInMonth(E.monthOf(today()),Number(g.contribution_date?.slice(-2)||1))
+    :H.milestone(g,f,E);
+  return when===day;
+ });
+ return list.map(g=>{
+   const achieved=project(g).progress>=100;
+   return '<button type="button" class="albus-goal-milestone" data-action="goal-details" data-id="'+esc(g.id)+'" title="'+esc(g.title)+'">'+
+   (achieved?'✓ Meta concluída':'✦ Conquista prevista')+'</button>';
+ }).join('');
 }
 function row(x,child=false){
  const due=x.entry_type==='expense'?E.paymentDate(x,db.settings):'',linked=db.events.find(e=>e.id===x.event_id);
@@ -299,27 +328,65 @@ function submitEventExpense(ev){
  }catch(err){error(err)}
 }
 function goalForm(m){
- const old=db.goals.find(x=>x.id===m.id)||{};
- return modal(m.id?'Editar objetivo':'Criar caixinha',
- '<form id="goal-form"><div class="field"><label>Nome do objetivo</label><input name="title" maxlength="100" required value="'+esc(old.title||'')+'" placeholder="Casa própria, viagem, reserva de emergência"/></div>'+
- '<div class="field-row"><div class="field"><label>Meta total (R$)</label>'+moneyInput('target',old.target_cents||0,'required')+'</div>'+
+ const existing=db.goals.find(x=>x.id===m.id),old=existing||{};
+ const isEmergency=H.isEmergency(old)||(!existing&&m.kind==='emergency');
+ const suggested=H.recommendedCost(E,entries(),db.overrides,E.monthOf(today()),'essential');
+ const cost=old.monthly_cost_cents??suggested.cents;
+ const months=old.coverage_months||6,goalDate=old.contribution_date||state.day;
+ const emergencyExists=db.goals.some(g=>H.isEmergency(g)&&g.id!==m.id);
+ return modal(existing?'Editar objetivo':'Criar caixinha',
+ '<form id="goal-form"><div class="field"><label>Tipo de objetivo</label><select name="goal_type" id="goal-type">'+
+ options([['general','Objetivo de investimento'],['emergency','Reserva de emergência']],isEmergency?'emergency':'general')+
+ '</select></div>'+
+ '<div class="field"><label>Nome do objetivo</label><input name="title" id="goal-title" maxlength="100" required value="'+esc(old.title||(isEmergency?'Reserva de emergência':''))+'" placeholder="Casa própria, viagem, reserva de emergência"/></div>'+
+ (emergencyExists?'<div class="albus-small">Já existe uma reserva de emergência. Você pode editar a atual ou criar outro objetivo.</div>':'')+
+ '<section id="emergency-fields" class="albus-emergency-fields">'+
+ '<div class="albus-warning">Primeiro objetivo sugerido: construa uma reserva para cobrir suas despesas essenciais em caso de imprevistos ou perda de renda.</div>'+
+ '<div class="field-row"><div class="field"><label>Receita mensal da família (referência)</label>'+moneyInput('income_reference',old.income_reference_cents??summary().income)+'</div>'+
+ '<div class="field"><label>Custo mensal usado na reserva</label>'+moneyInput('monthly_cost',cost)+'</div></div>'+
+ '<div class="field"><label>Período de cobertura</label><select name="coverage_months" id="coverage-months">'+
+ options([[6,'6 meses'],[12,'12 meses'],[18,'18 meses'],[24,'24 meses']],months)+'</select></div>'+
+ '<div class="albus-small">Sugestão de custo: '+mny(suggested.cents)+
+ ' ('+suggested.source+'). Estimativa baseada nas despesas essenciais cadastradas; revise se ainda faltam lançamentos.</div>'+
+ '</section>'+
+ '<div class="field-row"><div class="field"><label>Meta total (R$)</label>'+moneyInput('target',old.target_cents||(isEmergency?cost*months:0),'required')+'</div>'+
  '<div class="field"><label>Saldo inicial real (R$)</label>'+moneyInput('initial',old.initial_cents||0)+'</div></div>'+
  '<div class="field-row"><div class="field"><label>Aporte mensal pretendido (R$)</label>'+moneyInput('monthly',old.monthly_cents||0)+'</div>'+
- '<div class="field"><label>% do CDI</label><input name="cdi_percent" type="number" min="0" max="300" step=".1" required value="'+(old.cdi_percent??100)+'"/></div></div>'+
+ '<div class="field"><label>% do CDI (projeção)</label><input name="cdi_percent" type="number" min="0" max="300" step=".1" required value="'+(old.cdi_percent??100)+'"/></div></div>'+
+ '<div class="albus-schedule-fields"><label class="field-checkbox"><input name="schedule_enabled" id="goal-schedule" type="checkbox" '+
+ (existing?old.schedule_enabled===true?'checked':'': 'checked')+'/> Criar automaticamente um aporte mensal recorrente no calendário</label>'+
+ '<div class="field"><label>Em qual dia deseja reservar?</label><input type="date" name="contribution_date" id="goal-contribution-date" value="'+esc(goalDate)+'" required/></div>'+
+ '<div class="albus-small">A data escolhida define o dia de cada mês, com ajuste para o último dia nos meses mais curtos. O aporte fica previsto no orçamento e só entra no saldo real quando você o confirmar.</div></div>'+
  '<div class="field"><label>CDI anual manual (%) para contingência</label><input name="manual_cdi_annual" type="number" min="0" max="100" step=".01" value="'+(old.manual_cdi_annual??'')+'" placeholder="Opcional, se a consulta falhar"/></div>'+
- ownerInputs(m.id?old:null)+
- '<div class="albus-warning">Saldo real é dinheiro cadastrado como disponível ou aportado. Rendimento pelo CDI é apenas projeção, não retorno garantido. Não considera impostos, taxas nem oscilações futuras.</div>'+
- '<div class="form-footer">'+(m.id?button('Excluir caixinha','delete-goal','data-id="'+esc(m.id)+'"','text-button danger'):'<span></span>')+'<div>'+button('Cancelar','close','','secondary-button')+
- ' <button type="submit" class="primary-button">Salvar</button></div></div></form>');
+ ownerInputs(existing||null)+
+ '<div class="albus-warning">Saldo real e projeção são separados. Rendimentos estimados não entram automaticamente no patrimônio. Atualize o saldo conforme o extrato do banco ou fundo de investimentos.</div>'+
+ '<div class="form-footer">'+(existing?button('Excluir caixinha','delete-goal','data-id="'+esc(m.id)+'"','text-button danger'):'<span></span>')+'<div>'+button('Cancelar','close','','secondary-button')+
+ ' <button type="submit" class="primary-button">Salvar objetivo</button></div></div></form>');
+}
+function updateGoalUI(){
+ const form=root.querySelector('#goal-form');if(!form)return;
+ const type=String(form.elements.goal_type.value),fields=root.querySelector('#emergency-fields'),title=root.querySelector('#goal-title');
+ if(fields)fields.style.display=type==='emergency'?'block':'none';
+ if(type==='emergency'&&title&&!title.value.trim())title.value='Reserva de emergência';
+ const target=form.elements.target,cost=form.elements.monthly_cost,months=form.elements.coverage_months;
+ if(type==='emergency'&&target&&cost&&months){
+  const amount=E.parseMoney(cost.value);
+  target.value=M.fromCents(Math.min(99999999999,amount*Number(months.value||6)));
+  target.readOnly=true;
+ }else if(target)target.readOnly=false;
 }
 function goalDetails(m){
  const goal=db.goals.find(x=>x.id===m.id);if(!goal)return '';
- const f=G.forecast(goal,db.entries,state.cdi,state.month);
+ const f=project(goal),reached=f.progress>=100;
  return modal(goal.title,'<div class="albus-goal-modal-total"><span>Saldo real</span><strong>'+mny(f.actual)+'</strong><small>Meta: '+mny(f.target)+' · '+Math.round(f.progress)+'% concluído</small></div>'+
  '<div class="albus-progress"><span style="width:'+f.progress+'%"></span></div>'+
- '<div class="albus-goal-stats"><p>Aporte mensal planejado: <b>'+mny(f.monthly)+'</b></p><p>Remuneração de referência: <b>'+goal.cdi_percent+'% do CDI</b></p>'+
- '<p>Conclusão estimada: <b>'+(f.estimatedMonth?monthTitle(f.estimatedMonth):'Indefinida')+'</b></p></div>'+
- '<p class="albus-small">A projeção não acrescenta rendimentos estimados ao saldo real. Valores não incluem tributação ou custos.</p>'+
+ '<div class="albus-goal-stats">'+(H.isEmergency(goal)?'<p>Proteção: <b>'+goal.coverage_months+' meses</b> de gastos · custo base '+mny(goal.monthly_cost_cents)+'/mês</p>':'')+
+ '<p>Aporte mensal planejado: <b>'+mny(f.monthly)+'</b></p>'+
+ '<p>Dia do aporte: <b>'+(goal.contribution_date?fmt(goal.contribution_date):'Não programado')+'</b></p>'+
+ '<p>Rentabilidade de referência: <b>'+goal.cdi_percent+'% do CDI</b></p>'+
+ '<p>'+ (reached?'Meta concluída':'Conclusão projetada')+': <b>'+(reached?'100% alcançados':f.estimatedMonth?monthTitle(f.estimatedMonth):'Indefinida')+'</b></p></div>'+
+ (reached?'<div class="albus-success-goal">Reserva concluída. Considere começar outro objetivo e continue revisando suas despesas e o saldo da reserva.</div>':'')+
+ '<p class="albus-small">A projeção não acrescenta rendimentos ao saldo real. Atualize periodicamente o saldo segundo os rendimentos reais do banco ou fundo. Impostos e taxas não são considerados.</p>'+
  '<div class="form-footer">'+button('Editar','edit-goal','data-id="'+esc(goal.id)+'"','secondary-button')+button('+ Registrar aporte','add-contribution','data-id="'+esc(goal.id)+'"','primary-button')+'</div>');
 }
 function contributionForm(m){
