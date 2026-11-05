@@ -13,7 +13,18 @@
     const valid=new Map((entries||[]).filter(e=>e.entry_type==='reserve'&&e.goal_id===goal.id&&e.frequency!=='none').map(e=>[e.id,e]));
     const recurring=(overrides||[]).filter(o=>!o.deleted&&o.status==='set_aside'&&valid.has(o.entry_id));
     const confirmed=postings.filter(e=>e.frequency==='none').reduce((acc,e)=>acc+money(e.amount_cents),0);
-    return start+confirmed+recurring.reduce((acc,o)=>acc+money(o.amount_cents??valid.get(o.entry_id).amount_cents),0);
+    const adjustment=Number.isSafeInteger(Number(goal.balance_adjustment_cents))?Number(goal.balance_adjustment_cents):0;
+    return Math.max(0,start+adjustment+confirmed+recurring.reduce((acc,o)=>acc+money(o.amount_cents??valid.get(o.entry_id).amount_cents),0));
+  }
+  // Ajustar o saldo informado sem somar novamente aportes que já faziam parte dele.
+  // O ajuste assinado é mantido à parte do saldo inicial legado e das contribuições.
+  function withCurrentBalance(goal,desired,entries,overrides=[]){
+    const requested=money(desired);
+    if(!Number.isSafeInteger(requested))throw Error('Saldo atual inválido.');
+    if(!goal.id)return {...goal,initial_cents:requested,balance_adjustment_cents:0};
+    const before=realBalance(goal,entries,overrides);
+    const previous=Number.isSafeInteger(Number(goal.balance_adjustment_cents))?Number(goal.balance_adjustment_cents):0;
+    return {...goal,balance_adjustment_cents:previous+(requested-before)};
   }
   function forecast(goal,entries,rate,asOfMonth,overrides=[]){
     const actual=realBalance(goal,entries,overrides),target=money(goal.target_cents),monthly=money(goal.monthly_cents);
@@ -35,7 +46,9 @@
       futureBalance:balance,monthlyRate:factor};
   }
   function ensureGoal(raw){
-    return {...raw,initial_cents:money(raw.initial_cents),target_cents:money(raw.target_cents),
+    return {...raw,initial_cents:money(raw.initial_cents),
+      balance_adjustment_cents:Number.isSafeInteger(Number(raw.balance_adjustment_cents))?Number(raw.balance_adjustment_cents):0,
+      target_cents:money(raw.target_cents),
       monthly_cents:money(raw.monthly_cents),cdi_percent:Number(raw.cdi_percent??100)||100,
       created_by:raw.created_by||'legacy',visibility:raw.visibility==='private'?'private':'shared',
       responsible_ids:Array.isArray(raw.responsible_ids)?raw.responsible_ids:[]};
@@ -61,5 +74,5 @@
       return cache&&Number.isFinite(cache.annualPercent)?{...cache,stale:true,error:String(error)}:null;
     }
   }
-  scope.AlbusGoals={money,projectedRate,realBalance,forecast,ensureGoal,cdiAnnualFromDaily,getDailyCDI};
+  scope.AlbusGoals={money,projectedRate,realBalance,withCurrentBalance,forecast,ensureGoal,cdiAnnualFromDaily,getDailyCDI};
 })(typeof globalThis!=='undefined'?globalThis:this);
