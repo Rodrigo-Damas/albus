@@ -23,7 +23,7 @@ function load(){
  overrides:Array.isArray(v.overrides)?v.overrides:[],settings:{...defaults,...v.settings}};
 }
 B.ensureSnapshot(localStorage);
-const db=load(),state={user:'rodrigo',filter:'all',month:E.monthOf(today()),day:today(),modal:null,eventSession:null,createOpen:false,cdi:null,message:'',error:''};
+const db=load(),state={user:'rodrigo',filter:'all',month:E.monthOf(today()),day:today(),modal:null,eventSession:null,createOpen:false,goalsOpen:false,detailsOpen:false,cdi:null,message:'',error:''};
 const safe=()=>{try{B.save(localStorage,db);return true}catch(e){state.error='Não foi possível salvar no armazenamento local. Exporte um backup e verifique o espaço disponível.';return false}};
 const visible=items=>A.visibleItems(items,state.user,state.filter);
 const entries=()=>visible(db.entries), events=()=>visible(db.events),goals=()=>visible(db.goals);
@@ -97,7 +97,9 @@ function showGoalCard(g){
 function goalCards(){
  const listed=P.ordered(goals());
  const hasEmergency=db.goals.some(H.isEmergency);
- return '<section class="albus-goals"><div class="albus-goals-head"><div><strong>Objetivos e reservas</strong><span>Arraste para priorizar · Reserva de emergência sempre primeiro</span></div>'+
+ return '<section class="albus-goals'+(state.goalsOpen?' is-open':'')+'">'+
+ '<button class="albus-goals-toggle" data-action="toggle-goals" aria-expanded="'+state.goalsOpen+'"><span>◎ Objetivos e reservas <small>'+listed.length+' caixinha(s)</small></span><span>'+(state.goalsOpen?'▴ Recolher':'▾ Expandir')+'</span></button>'+
+ (state.goalsOpen?'<div class="albus-goals-content"><div class="albus-goals-head"><div><strong>Seus objetivos</strong><span>Arraste para priorizar · Reserva de emergência sempre primeiro</span></div>'+
  button('⚙ Limite mensal','portfolio-settings','','albus-tiny-button')+
  button('+ Nova caixinha','create','data-kind="goal"','albus-tiny-button')+'</div><div class="albus-goals-grid">'+
  (!hasEmergency?'<button type="button" class="albus-goal-placeholder albus-emergency-suggestion" data-action="new-emergency">♧ Comece pela Reserva de emergência · 6, 12, 18 ou 24 meses de despesas</button>':'')+
@@ -111,7 +113,7 @@ function goalCards(){
  (!listed.length&&hasEmergency?'<span class="albus-small">Objetivos ocultos pelo filtro de participantes.</span>':'')+
  '</div><div class="albus-cdi-meta">'+(state.cdi?'CDI de referência: '+state.cdi.annualPercent.toFixed(2).replace('.',',')+'% a.a. (estimado), dado '+esc(state.cdi.rateDate||'em cache')+(state.cdi.stale?' · atualização indisponível':''):'CDI automático: aguardando consulta. Você pode informar uma taxa manual.')+
  ' <span>Atualize o saldo com os rendimentos reais do seu banco ou investimento.</span></div>'+
- (listed.some(g=>project(g).progress>=100)?'<div class="albus-success-goal">Meta atingida. Considere criar outro objetivo, como casa própria, carro ou viagem, e revise o valor da reserva periodicamente.</div>':'')+'</section>';
+ (listed.some(g=>project(g).progress>=100)?'<div class="albus-success-goal">Meta atingida. Considere criar outro objetivo, como casa própria, carro ou viagem, e revise o valor da reserva periodicamente.</div>':'')+'</div>':'')+'</section>';
 }
 function cashSources(rows,month){
  const expenses=rows.filter(x=>x.entry_type==='expense');
@@ -130,20 +132,92 @@ function cashBreakdown(parts,scope){
  '<div><span>Pix, débito e dinheiro</span><strong>'+mny(parts.immediate)+'</strong></div></div>';
 }
 function dashboardCards(){
- const s=summary(),balance=s.valueToAssign,m=monthTitle(state.month);
- const data=[
- ['Receitas de '+m,s.income,'Entradas previstas','income'],
- ['Pagamentos previstos',s.expense,'Pagos: '+mny(s.paid),'expense'],
- ['Reservas, objetivos e imprevistos',s.reserve+s.provision,'Objetivos: '+mny(s.reserve)+' · Imprevistos: '+mny(s.provision),'reserve'],
- [balance<0?'Déficit a cobrir':balance===0?'Orçamento distribuído':'Valor a destinar',balance,
-  balance<0?'Receitas insuficientes para cobrir as saídas previstas':balance===0?'Planejamento equilibrado':'Disponível para distribuir','balance']
+ const data=summary(),balance=data.valueToAssign,month=monthTitle(state.month);
+ const values=[
+  ['Receitas de '+month,data.income,'Entradas do mês','income'],
+  ['Pagamentos previstos',data.expense,'Vencimentos do mês','expense'],
+  ['Reservas, objetivos e imprevistos',data.reserve+data.provision,'Aportes e provisão do mês','reserve'],
+  [balance<0?'Déficit a cobrir':balance===0?'Orçamento distribuído':'Valor a destinar',balance,
+    balance<0?'Saídas superaram receitas':balance===0?'Planejamento equilibrado':'Disponível para distribuir','balance']
  ];
- const paid=cashSources(cashRows(state.month,'cash'),state.month);
- return '<section class="albus-summary albus-compact-summary">'+data.map(x=>'<article class="summary-card '+x[3]+(x[3]==='balance'&&x[1]===0?' zero':'')+(x[3]==='balance'&&x[1]<0?' negative':'')+'"><div class="summary-kicker">'+esc(x[0])+'</div><div class="summary-value">'+mny(x[1])+'</div><div class="summary-meta">'+esc(x[2])+'</div>'+
- (x[3]==='reserve'?button('⚙ Ajustar limite','portfolio-settings','title="Configurar limite mensal e prioridades"','albus-summary-settings'):'')+
- (x[3]==='balance'&&x[1]<0?'<div class="albus-deficit-message" role="status">As despesas, reservas e imprevistos previstos superaram as receitas do mês.</div>':'')+'</article>').join('')+'</section>'+
- '<section class="albus-month-origin"><div class="albus-origin-heading"><strong>Origem dos pagamentos em '+esc(m)+'</strong><span>Faturas de compras anteriores vencem agora, sem duplicar o gasto.</span></div>'+
- cashBreakdown(paid,'do mês')+'</section>';
+ const waiting=cashRows(state.month,'cash').filter(x=>x.virtual_portfolio&&x.display_date<=today()).length;
+ return '<section class="albus-summary albus-compact-summary">'+values.map(x=>
+ '<button type="button" class="summary-card albus-financial-card '+x[3]+(x[3]==='balance'&&x[1]===0?' zero':'')+(x[3]==='balance'&&x[1]<0?' negative':'')+
+ '" data-action="summary" data-kind="'+x[3]+'" aria-label="Ver detalhes: '+esc(x[0])+'" title="Clique para abrir os detalhes">'+
+ '<span class="summary-kicker">'+esc(x[0])+'</span>'+
+ '<span class="summary-value">'+mny(x[1])+'</span>'+
+ '<span class="summary-meta">'+esc(x[2])+'</span>'+
+ (x[3]==='reserve'&&waiting?'<span class="albus-summary-pending">'+waiting+' aporte(s) a conferir</span>':'')+
+ (x[3]==='balance'&&balance<0?'<span class="albus-deficit-message">Saídas previstas superaram as receitas deste mês.</span>':'')+
+ '<span class="albus-summary-open">Ver detalhes ↗</span></button>').join('')+'</section>';
+}
+function monthlySummaryModal(m){
+ const kind=m.kind||'balance',month=monthTitle(state.month),sum=summary();
+ const rows=cashRows(state.month,'cash');
+ const income=rows.filter(x=>x.entry_type==='income');
+ const expenses=rows.filter(x=>x.entry_type==='expense');
+ const reserve=rows.filter(x=>x.entry_type==='reserve');
+ const total=items=>items.reduce((v,x)=>v+Number(x.amount_cents||0),0);
+ const dateText=x=>fmt(x.display_date||x.entry_date);
+ const item=(x,canEdit=true)=>'<div class="albus-summary-row"><span class="albus-summary-row-details"><b>'+esc(x.title||'Lançamento')+'</b><small>'+
+  dateText(x)+(x.payment_method==='credit'?' · Cartão':'')+(x.virtual_portfolio?' · Planejado':'')+'</small></span>'+
+  '<strong>'+mny(x.amount_cents)+'</strong>'+
+  (canEdit&&!x.virtual_portfolio?button('Editar','edit-entry','data-id="'+esc(x.id)+'" data-occurrence="'+esc(x.occurrence_date||x.entry_date)+'"','albus-tiny-button'):'')+
+ '</div>';
+ const title={income:'Receitas',expense:'Pagamentos previstos',reserve:'Reservas, objetivos e imprevistos',balance:'Resumo do mês'}[kind]||'Resumo do mês';
+ const head='<div class="albus-summary-modal-lead">'+esc(month)+' · '+esc(title)+'</div>';
+ if(kind==='income'){
+  return modal('Receitas · '+month,head+
+   '<div class="albus-summary-total"><span>Total previsto</span><strong>'+mny(sum.income)+'</strong></div>'+
+   '<div class="albus-summary-items">'+(income.map(x=>item(x)).join('')||'<p class="albus-small">Nenhuma receita prevista neste mês.</p>')+'</div>'+
+   button('+ Criar receita','create','data-kind="income"','primary-button'));
+ }
+ if(kind==='expense'){
+  const breakdown=cashSources(rows,state.month);
+  const heading='<div class="albus-summary-total"><span>Pagamentos do mês</span><strong>'+mny(sum.expense)+'</strong></div>'+cashBreakdown(breakdown,'do mês');
+  const group=(name,items)=>'<div class="albus-summary-group"><h3>'+name+' · '+mny(total(items))+'</h3>'+
+    (items.map(x=>item(x)).join('')||'<p class="albus-small">Nenhum pagamento nesta categoria.</p>')+'</div>';
+  const old=expenses.filter(x=>x.payment_method==='credit'&&E.monthOf(x.occurrence_date)<state.month);
+  const current=expenses.filter(x=>x.payment_method==='credit'&&E.monthOf(x.occurrence_date)>=state.month);
+  return modal('Pagamentos · '+month,head+heading+
+   group('Cartão · compras anteriores',old)+group('Cartão · compras do mês',current)+
+   group('Pix, débito e dinheiro',expenses.filter(x=>x.payment_method!=='credit')));
+ }
+ if(kind==='reserve'){
+  const planned=reserve.filter(x=>x.virtual_portfolio);
+  const confirmed=reserve.filter(x=>x.status==='set_aside');
+  const other=reserve.filter(x=>!x.virtual_portfolio&&x.status!=='set_aside');
+  const todayDate=today();
+  const line=x=>{
+   const isDue=x.entry_date<=todayDate;
+   const stateLabel=x.entry_date>todayDate?'Programado para '+fmt(x.entry_date):
+    x.entry_date===todayDate?'Previsto para hoje':'Pendente desde '+fmt(x.entry_date);
+   return '<div class="albus-summary-row albus-contribution-row">'+
+    '<span class="albus-summary-row-details"><b>'+esc(x.title)+'</b>'+
+    '<small>'+esc(stateLabel)+'</small></span><strong>'+mny(x.amount_cents)+'</strong>'+
+    (isDue?button('Confirmar aporte','confirm-portfolio',
+      'data-id="'+esc(x.goal_id)+'" data-date="'+esc(x.entry_date)+'" data-amount="'+x.amount_cents+'"','albus-small-confirm'):'')+
+    '</div>';
+  };
+  const cap=P.budget(db,E,H,E.monthOf(today()));
+  return modal('Reservas, objetivos e imprevistos · '+month,head+
+   '<div class="albus-summary-total"><span>Total previsto de reservas e imprevistos</span><strong>'+mny(sum.reserve+sum.provision)+'</strong></div>'+
+   '<div class="albus-reserve-figures"><span>Aportes: <b>'+mny(sum.reserve)+'</b></span><span>Imprevistos: <b>'+mny(sum.provision)+'</b></span>'+
+   '<span>Limite mensal de aportes: <b>'+mny(cap.cents)+'</b></span></div>'+
+   '<div class="albus-summary-modal-actions">'+button('⚙ Ajustar limite','portfolio-settings','','secondary-button')+
+   button('◎ Ver objetivos','open-goals','','secondary-button')+'</div>'+
+   '<h3>Aportes a confirmar</h3><div class="albus-summary-items">'+
+   (planned.map(line).join('')||'<p class="albus-small">Nenhum aporte automático pendente neste mês.</p>')+'</div>'+
+   (confirmed.length?'<h3>Aportes realizados</h3>'+confirmed.map(x=>item(x,false)).join(''):'')+
+   (other.length?'<h3>Outras reservas</h3>'+other.map(x=>item(x)).join(''):''));
+ }
+ return modal('Resumo do mês · '+month,head+
+  '<div class="albus-summary-total"><span>Valor a destinar / déficit</span><strong>'+mny(sum.valueToAssign)+'</strong></div>'+
+  '<div class="albus-reserve-figures"><span>Receitas: <b>'+mny(sum.income)+'</b></span>'+
+  '<span>Pagamentos: <b>'+mny(sum.expense)+'</b></span>'+
+  '<span>Reservas e imprevistos: <b>'+mny(sum.reserve+sum.provision)+'</b></span></div>'+
+  (sum.valueToAssign<0?'<p class="albus-deficit-message">Os gastos, as reservas e os imprevistos previstos superaram as receitas do mês.</p>':
+   '<p class="albus-small">Este valor considera receitas e saídas previstas no mês, inclusive faturas de compras anteriores.</p>'));
 }
 let activeHelp=null;
 function closeHelp(){
