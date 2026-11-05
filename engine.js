@@ -72,6 +72,7 @@ const AlbusEngine = (function albusEngineFactory() {
   function occurrenceInMonth(entry,month) {
     if(!dateParts(entry.entry_date))return null;
     if(month<monthOf(entry.entry_date))return null;
+    if(entry.recurrence_end_month&&month>entry.recurrence_end_month)return null;
     if(entry.frequency==='monthly')return dateInMonth(month,+entry.entry_date.slice(8,10));
     if(entry.frequency==='business_day_monthly')return businessDate(month,entry.business_day_number||5,entry.include_saturday!==false,entry.extra_holidays);
     return monthOf(entry.entry_date)===month?entry.entry_date:null;
