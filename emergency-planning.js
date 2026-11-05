@@ -8,7 +8,6 @@
   const monthOf=x=>String(x||'').slice(0,7);
   function recommendedCost(engine,entries,overrides,month,basis='essential'){
     const completed=[1,2,3].map(n=>engine.addMonths(month,-n));
-    const view=scope?.AlbusEngine||engine;
     const read=m=>engine.occurrencesForMonth(entries,overrides,m,{},'purchase')
       .filter(e=>e.entry_type==='expense'&&(basis!=='essential'||essential.has(e.category)))
       .reduce((s,e)=>s+cents(e.amount_cents),0);
@@ -37,6 +36,10 @@
     const nowMonth=monthOf(now),date=goal.contribution_date,monthly=cents(goal.monthly_cents);
     const scheduled=goal.schedule_enabled!==false&&monthly>0&&engine.dateParts(date);
     const active=all.find(x=>!x.recurrence_end_month||x.recurrence_end_month>=nowMonth);
+    // Objetivos do MVP anterior podem já conter um aporte mensal cadastrado.
+    // Não iniciar outra série automaticamente nesse caso.
+    const legacyRecurring=(db.entries||[]).find(x=>x.goal_id===goal.id&&x.entry_type==='reserve'&&x.frequency==='monthly'&&!x.auto_scheduled&&(!x.recurrence_end_month||x.recurrence_end_month>=nowMonth));
+    if(legacyRecurring&&scheduled&&!active)return db;
     if(scheduled&&active&&active.amount_cents===monthly&&active.entry_date.slice(-2)===date.slice(-2)&&
        active.title==='Reserva ou investimento · '+goal.title&&active.visibility===goal.visibility&&
        JSON.stringify(active.responsible_ids||[])===JSON.stringify(goal.responsible_ids||[]))
@@ -52,6 +55,7 @@
     // mês e as confirmações anteriores nunca são substituídos.
     const startMonth=active?engine.addMonths(nowMonth,1):monthOf(date);
     const first=engine.dateInMonth(startMonth,Number(date.slice(-2)));
+    if(goal.target_cents>0&&cents(goal.initial_cents)>=goal.target_cents)return changed;
     const entry={id:createId(),entry_type:'reserve',title:'Reserva ou investimento · '+goal.title,
       goal_id:goal.id,auto_scheduled:true,entry_date:first,amount_cents:monthly,
       frequency:'monthly',status:'planned',category:'Precaução',payment_method:'pix',
