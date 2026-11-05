@@ -377,8 +377,9 @@ function goalForm(m){
  const suggested=H.recommendedCost(E,entries(),db.overrides,E.monthOf(today()),'essential');
  const suggestedIncome=H.recommendedIncome(E,entries(),db.overrides,E.monthOf(today()));
  const revision=m.review===true;
- const cost=revision&&suggested.months?suggested.cents:(old.monthly_cost_cents??suggested.cents);
- const income=revision&&suggestedIncome.months?suggestedIncome.cents:(old.income_reference_cents??suggestedIncome.cents);
+ const cost=old.monthly_cost_cents??suggested.cents;
+ const recentIncome=suggestedIncome.samples[0]?.cents??0;
+ const income=revision&&recentIncome?recentIncome:(old.income_reference_cents??recentIncome);
  const months=old.coverage_months||6;
  const suggestedDate=H.suggestedContributionDate(E,entries(),db.overrides,E.monthOf(state.day));
  const goalDate=old.contribution_date||suggestedDate||state.day;
@@ -395,13 +396,13 @@ function goalForm(m){
  '<div class="field"><label>Custo mensal usado na reserva</label>'+moneyInput('monthly_cost',cost)+'</div></div>'+
  '<div class="field"><label>Período de cobertura</label><select name="coverage_months" id="coverage-months">'+
  options([[6,'6 meses'],[12,'12 meses'],[18,'18 meses'],[24,'24 meses']],months)+'</select></div>'+
- '<div class="albus-small"><b>Receita sugerida:</b> '+mny(suggestedIncome.cents)+' · '+esc(suggestedIncome.source)+
- '. <b>Custo essencial sugerido:</b> '+mny(suggested.cents)+' · '+esc(suggested.source)+'. '+
- (suggested.months>1?'Estimativa conservadora: 70% da média + 30% do mês mais caro. ':'')+
- 'Os meses com lançamentos podem estar incompletos. Confirme os valores antes de salvar. O mês atual só serve como referência provisória quando não há histórico anterior.</div>'+
+ '<div class="albus-small">Receita de referência: '+(recentIncome?mny(recentIncome):'preenchimento manual')+
+ ' (último mês com lançamentos).'+(existing?' Seu custo mensal foi preservado, conforme você definiu.':' A referência inicial de custo pode ser ajustada manualmente.')+
+ '</div>'+
  '</section>'+
- '<div class="field-row"><div class="field"><label>Meta total (R$)</label>'+moneyInput('target',old.target_cents||(isEmergency?cost*months:0),'required')+'</div>'+
- '<div class="field"><label>Saldo inicial real (R$)</label>'+moneyInput('initial',old.initial_cents||0)+'</div></div>'+
+ '<div class="field-row"><div class="field"><label>Meta total (R$)</label>'+moneyInput('target',old.target_cents??(isEmergency?cost*months:0),'required')+'</div>'+
+ '<div class="field"><label>Saldo atual (R$)</label>'+moneyInput('current_balance',existing?G.realBalance(existing,db.entries,db.overrides):0)+'</div></div>'+
+ '<p class="albus-small">Saldo atual é o valor disponível hoje no banco ou investimento, incluindo rendimentos e aportes anteriores. Atualizá-lo substitui a referência de saldo sem somar novamente depósitos já contabilizados.</p>'+
  '<div class="field-row"><div class="field"><label>Aporte mensal pretendido (R$)</label>'+moneyInput('monthly',old.monthly_cents??(suggestedContribution??0))+
  '<div class="albus-small">Sugestão de aporte: '+(suggestedContribution===null?'sem dados suficientes':mny(suggestedContribution))+
  '. Referência: até 20% da receita mensal estimada, ajustável no quadro financeiro. Limite total atual: '+mny(cap.cents)+'. '+
@@ -423,11 +424,13 @@ function updateGoalUI(){
  if(fields)fields.style.display=type==='emergency'?'block':'none';
  if(type==='emergency'&&title&&!title.value.trim())title.value='Reserva de emergência';
  const target=form.elements.target,cost=form.elements.monthly_cost,months=form.elements.coverage_months;
- if(type==='emergency'&&target&&cost&&months){
-  const amount=E.parseMoney(cost.value);
-  target.value=M.fromCents(Math.min(99999999999,amount*Number(months.value||6)));
-  target.readOnly=true;
- }else if(target)target.readOnly=false;
+ // Apenas uma caixinha nova recebe cálculo inicial. Metas existentes nunca são
+ // reescritas ao abrir o editor, mesmo quando o custo de referência é diferente.
+ const existing=!!db.goals.find(g=>g.id===state.modal?.id);
+ if(target)target.readOnly=false;
+ if(type==='emergency'&&!existing&&target&&cost&&months&&target.dataset.userEdited!=='yes'){
+  target.value=M.fromCents(Math.min(99999999999,E.parseMoney(cost.value)*Number(months.value||6)));
+ }
 }
 function goalDetails(m){
  const goal=db.goals.find(x=>x.id===m.id);if(!goal)return '';
@@ -702,8 +705,8 @@ function submitGoal(ev){
  const cost=emergency?E.parseMoney(f.get('monthly_cost')):0;
  const coverage=Number(f.get('coverage_months')||6);
  if(emergency&&cost<=0)throw Error('Informe um custo mensal estimado para definir a reserva.');
- const target=emergency?H.emergencyTarget(cost,coverage):E.parseMoney(f.get('target'));
- const monthly=E.parseMoney(f.get('monthly')),initial=E.parseMoney(f.get('initial'));
+ const target=E.parseMoney(f.get('target'));
+ const monthly=E.parseMoney(f.get('monthly')),currentBalance=E.parseMoney(f.get('current_balance'));
  const date=String(f.get('contribution_date')||state.day);
  const schedule=f.has('schedule_enabled')&&monthly>0;
  if(!target)throw Error('A meta precisa ser maior que zero.');
@@ -713,13 +716,15 @@ function submitGoal(ev){
  if(!Number.isFinite(percent)||percent<0||percent>300)throw Error('Percentual do CDI inválido.');
  if(manual!==''&&(!Number.isFinite(Number(manual))||Number(manual)<0||Number(manual)>100))throw Error('Taxa manual inválida.');
  const ownership=owners(f,old);
- const value={...ownership,title,goal_type:type,target_cents:target,initial_cents:initial,
+ const value={...ownership,title,goal_type:type,target_cents:target,
   monthly_cents:monthly,monthly_cost_cents:cost,
   income_reference_cents:emergency?E.parseMoney(f.get('income_reference')):0,
   coverage_months:emergency?coverage:null,contribution_date:date,schedule_enabled:schedule,
   cdi_percent:percent,manual_cdi_annual:manual===''?null:Number(manual)};
- const goal={...(old||{}),id:old?.id||id(),...value,
+ const baseGoal={...(old||{}),id:old?.id||id(),...value,
   priority_index:old?.priority_index??db.goals.length};
+ const goal=old?G.withCurrentBalance(baseGoal,currentBalance,db.entries,db.overrides):
+  {...baseGoal,initial_cents:currentBalance,balance_adjustment_cents:0};
  const next={...db,goals:old?db.goals.map(g=>g.id===goal.id?goal:g):[...db.goals,goal]};
  const planned=next; // A fila universal gera previsões virtuais; não cria séries duplicadas.
  // A meta, o calendário recorrente e os dados anteriores são salvos juntos.
