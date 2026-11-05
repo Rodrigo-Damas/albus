@@ -204,3 +204,15 @@ A **fila de prioridades não pode ser desligada**. A reserva de emergência é s
 **Exclusão de objetivos:** a caixinha pode ser excluída mesmo quando possui depósitos relacionados. Exige confirmação. Séries recorrentes vinculadas à caixinha são canceladas, mantendo os depósitos já confirmados em novos registros históricos independentes; aportes únicos já cadastrados permanecem, agora desvinculados. Os dados são salvos em operação local com snapshot e não se apagam eventos ou despesas de outras categorias. O botão **Excluir caixinha** continua disponível no formulário **Editar objetivo**. O motor `goal-priorities.js` implementa essa operação em `removeGoal`.
 
 Arquivos alterados: `goal-priorities.js`, `app-v3.js`; testes: `tests/always-on-goal-queue.test.cjs`, atualização de `tests/priority-budget.test.cjs`. Os cenários foram validados com simulações; o ambiente oficial continua intocado.
+
+## Ajustes no gerenciamento de caixinhas (05/11/2026)
+
+- **Exclusão:** a confirmação de exclusão agora é um diálogo visual do próprio Albus (não mais `window.confirm` do navegador). As ações são **Cancelar** e **Sim, excluir caixinha**. O cancelamento retorna ao editor; a confirmação usa `P.removeGoal`, que preserva aportes realizados como registros independentes.
+- **Atualizar reserva de emergência:** abre diretamente **Editar objetivo**. O custo mensal inserido anteriormente, a cobertura, a meta, o aporte mensal e as demais configurações **permanecem preenchidos com os valores definidos pela pessoa**. Não é mais mostrada a comparação com médias de custos.
+- **Receita de referência:** caso o usuário solicite a revisão, o formulário pode sugerir o valor do último mês que possui lançamentos de receita. Os valores são editáveis e não substituem a receita já registrada sem confirmação do formulário.
+- **Saldo atual:** substitui o campo “Saldo inicial real”. Mostra o saldo efetivo, incluindo rendimentos e depósitos anteriores. A conciliação armazena um ajuste assinado separado do saldo legado e dos aportes contabilizados, evitando dupla contagem. A soma dos aportes posteriores à atualização continua aumentando o saldo efetivo.
+- **Meta total:** permite digitar ou corrigir uma meta definida manualmente (ex.: R$ 156.000), mesmo em uma reserva de emergência cujo custo mensal anteriormente foi definido pelo próprio usuário. No cadastro novo, o sistema pode sugerir custo vezes cobertura, mas metas existentes não são substituídas automaticamente.
+- **Caixinhas:** exibem **Aporte desejado**, **Aporte possível no mês** (alocação real da fila respeitando o limite mensal), **Previsão** e **Prioridade**. A reserva de emergência continua com a primeira prioridade.
+- O armazenamento segue na chave `albus-calendar-local-v1` e utiliza snapshots antes de gravar alterações. Nenhum histórico existente foi apagado; alterações continuam restritas à branch da PR #3.
+
+Validação: testes `tests/goal-balance-and-confirmation.test.cjs` mais verificação de integração do editor e da conciliação entre saldo, histórico e novos depósitos. Revisão visual manual no navegador ainda recomendada.
