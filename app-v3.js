@@ -917,6 +917,48 @@ function bind(){
  updateEntryUI();
  updateGoalUI();
  for(const c of root.querySelectorAll('.albus-day[role="button"]'))c.addEventListener('keydown',e=>{if(e.target===c&&(e.key==='Enter'||e.key===' ')){e.preventDefault();state.day=c.dataset.date;render()}});
+ // Reordenação de objetivos com mouse, toque e caneta.
+ // A alça não altera valores: apenas salva a ordem de prioridade.
+ for(const handle of root.querySelectorAll('.albus-goal-handle')){
+  handle.addEventListener('pointerdown',ev=>{
+   if(ev.button!==0)return;
+   const source=handle.closest('[data-priority-id]');
+   if(!source)return;
+   const id=source.dataset.priorityId;
+   let moved=false,hover=null;
+   const startX=ev.clientX,startY=ev.clientY,pointer=ev.pointerId;
+   try{handle.setPointerCapture(pointer);}catch{}
+   const onMove=e=>{
+    if(e.pointerId!==pointer)return;
+    if(!moved&&Math.hypot(e.clientX-startX,e.clientY-startY)<7)return;
+    moved=true;
+    if(e.cancelable)e.preventDefault();
+    const target=document.elementFromPoint(e.clientX,e.clientY)?.closest?.('[data-priority-id]');
+    if(hover!==target){hover?.classList.remove('priority-drop-on');target?.classList.add('priority-drop-on');hover=target;}
+    source.classList.add('priority-moving');
+   };
+   const finish=e=>{
+    if(e.pointerId!==pointer)return;
+    handle.removeEventListener('pointermove',onMove);
+    handle.removeEventListener('pointerup',finish);
+    handle.removeEventListener('pointercancel',cancel);
+    source.classList.remove('priority-moving');
+    hover?.classList.remove('priority-drop-on');
+    if(!moved||!hover||hover.dataset.priorityId===id)return;
+    reorderPriority(id,hover.dataset.priorityId);
+   };
+   const cancel=()=>{
+    handle.removeEventListener('pointermove',onMove);
+    handle.removeEventListener('pointerup',finish);
+    handle.removeEventListener('pointercancel',cancel);
+    source.classList.remove('priority-moving');
+    hover?.classList.remove('priority-drop-on');
+   };
+   handle.addEventListener('pointermove',onMove);
+   handle.addEventListener('pointerup',finish);
+   handle.addEventListener('pointercancel',cancel);
+  });
+ }
  // Delegação por Pointer Events: funciona com mouse, toque e caneta.
  // Não depende do drag-and-drop HTML nativo, que falha em navegadores móveis.
  let gesture=null;
