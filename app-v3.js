@@ -315,9 +315,8 @@ function row(x,child=false){
  earlier?'Compra anterior · paga neste mês':'',
  due&&x.payment_method==='credit'?'Vence '+fmt(due):''].filter(Boolean).join(' · ');
  if(x.virtual_portfolio)return '<div class="albus-row albus-virtual-row"><span class="albus-grip">◈</span>'+
- '<span class="text"><b>'+esc(x.title)+'</b><div class="caption">Aporte previsto · prioridade '+x.priority+' · confirme para registrar no saldo real</div></span>'+
- '<span class="albus-entry-price">'+mny(x.amount_cents)+'</span>'+
- button('Confirmar','confirm-portfolio','data-id="'+esc(x.goal_id)+'" data-date="'+esc(x.entry_date)+'" data-amount="'+x.amount_cents+'"','albus-tiny-button')+'</div>';
+ '<span class="text"><b>'+esc(x.title)+'</b><div class="caption">Aporte programado · confirme no resumo de Reservas, objetivos e imprevistos</div></span>'+
+ '<span class="albus-entry-price">'+mny(x.amount_cents)+'</span></div>';
  return '<div class="albus-row" data-drag-kind="entry" data-drag-id="'+esc(x.id)+'" data-occurrence="'+esc(x.occurrence_date||x.entry_date)+'"><span class="albus-grip albus-drag-handle" title="Segure e arraste">⠿</span>'+
  '<span class="text"><b>'+esc(x.title)+'</b><div class="caption">'+esc(desc)+'</div></span>'+
  (x.entry_type==='task'?'':'<span class="albus-entry-price '+(x.entry_type==='income'?'in':'')+'">'+mny(x.amount_cents)+'</span>')+
@@ -337,10 +336,11 @@ function details(){
    button('↔','move-event','data-id="'+esc(x.id)+'"','albus-tiny-button ghost')+'</div><div class="albus-small">Participantes: '+esc(A.responsibleLabel(x))+'</div>'+
    children.map(y=>row(y,true)).join('')+button('+ Despesa vinculada','add-child','data-id="'+esc(x.id)+'"','albus-tiny-button')+'</div>';
  }).join('');
- return '<aside class="surface details"><div class="albus-detail-heading"><div><div class="details-label">DETALHAMENTO DO DIA</div><h2>'+fmt(day)+'</h2></div></div>'+
+ return '<aside class="surface details"><div class="albus-detail-heading"><div><div class="details-label">DETALHAMENTO DO DIA</div><h2>'+fmt(day)+'</h2></div>'+
+ button('×','close-details','aria-label="Fechar detalhamento do dia"','albus-detail-close')+'</div>'+
  '<div class="day-overview"><div class="overview-card"><span class="small-label">Entradas</span><strong class="positive">'+mny(entriesAt.filter(x=>x.entry_type==='income').reduce((a,x)=>a+Number(x.amount_cents||0),0))+'</strong></div>'+
  '<div class="overview-card"><span class="small-label">Saídas</span><strong class="negative">'+mny(entriesAt.filter(x=>x.entry_type==='expense').reduce((a,x)=>a+Number(x.amount_cents||0),0))+'</strong></div></div>'+
- '<div class="albus-day-origin"><strong>Composição dos pagamentos do dia</strong>'+cashBreakdown(daySources,'do dia')+'</div>'+
+ ''+
  '<div class="albus-details-create">'+createMenu()+'</div>'+
  '<div class="albus-detail-section"><h3>Eventos · '+ev.length+'</h3>'+(eventHTML||'<div class="albus-details-empty">Nenhum evento neste dia.</div>')+'</div>'+
  '<div class="albus-detail-section"><h3>Lançamentos · '+others.length+'</h3>'+(others.map(x=>row(x)).join('')||'<div class="albus-details-empty">Nenhum lançamento neste dia.</div>')+'</div>'+
@@ -664,15 +664,17 @@ function render(){
  '<div class="albus-top-center">Calendário e planejamento da família</div><div class="albus-top-right"><button type="button" class="albus-backup-button" data-action="export-backup" title="Baixar cópia dos cadastros deste navegador">↓ Backup</button><button type="button" class="albus-backup-button" data-action="import-backup" title="Importar sem sobrescrever lançamentos">↑ Importar</button><input id="backup-file" type="file" accept="application/json,.json" hidden/> Perfil de teste <select id="demo-user">'+
  options(MEMBER.map(x=>[x.id,x.name]),state.user)+'</select><span class="albus-family-pill">Família</span></div></header>'+
  '<main class="albus-main"><div class="albus-title-row albus-compact-head"><div><div class="albus-eyebrow">CALENDÁRIO · '+esc(monthTitle(state.month))+'</div>'+
- '<h1>Seu calendário.</h1></div></div>'+
- '<div class="albus-note">Ambiente de testes: Rodrigo e Danielle são perfis simulados. Os dados ficam neste navegador e neste endereço. <b>Para protegê-los, use ↓ Backup antes de testar mudanças importantes.</b> Não há sincronização entre links diferentes.</div>'+
+ '<h1>Seu calendário.</h1></div>'+
+ button('⚙ Configurações','settings','','albus-main-settings')+'</div>'+
+ '<div class="albus-note albus-note-compact">Teste local · dados mantidos neste navegador. Use Backup antes de alterações importantes.</div>'+
  (state.error?'<div class="error">'+esc(state.error)+'</div>':'')+(state.message?'<div class="success">'+esc(state.message)+'</div>':'')+
  '<div class="albus-sticky-sentinel" aria-hidden="true"></div>'+
  '<div class="albus-financial-sticky" id="financial-sticky" role="region" aria-label="Resumo financeiro e origem dos pagamentos">'+dashboardCards()+'</div>'+
  goalCards()+
- '<section class="albus-dashboard albus-dashboard-three">'+filters()+calendar()+details()+'</section>'+
+ '<section class="albus-dashboard albus-calendar-workspace'+(state.detailsOpen?' has-details':'')+'">'+calendar()+(state.detailsOpen?details():'')+'</section>'+
  '<div class="albus-footer"><b>Entenda o mês:</b> receitas previstas financiam pagamentos com vencimento neste mês, inclusive faturas de compras anteriores. Compras no cartão para meses futuros: '+mny(s.futureCard)+'. Sem duplicidade.</div>'+
  '</main>'+(
+ state.modal?.type==='monthly-summary'?monthlySummaryModal(state.modal):
  state.modal?.type==='entry'?entryForm(state.modal):
  state.modal?.type==='event'?eventForm(state.modal):
  state.modal?.type==='event-expense'?eventForm({id:state.eventSession?.id,date:state.eventSession?.draft?.date})+eventExpenseForm():
@@ -880,9 +882,13 @@ function bind(){
  updateStickySummary();
  root.querySelectorAll('[data-action]').forEach(el=>el.addEventListener('click',event=>{
   const action=el.dataset.action,item=el.dataset.id,kind=el.dataset.kind;
-  if(action==='day'){state.day=el.dataset.date;state.message='';return render()}
+  if(action==='day'){state.day=el.dataset.date;state.detailsOpen=true;state.message='';return render()}
+  if(action==='close-details'){state.detailsOpen=false;state.createOpen=false;return render()}
+  if(action==='summary')return open('monthly-summary',{kind});
+  if(action==='toggle-goals'){state.goalsOpen=!state.goalsOpen;return render()}
+  if(action==='open-goals'){state.goalsOpen=true;state.modal=null;return render()}
   if(action==='previous'||action==='next'){state.month=E.addMonths(state.month,action==='previous'?-1:1);state.day=E.dateInMonth(state.month,Number(state.day.slice(-2)));return render()}
-  if(action==='today'){state.month=E.monthOf(today());state.day=today();return render()}
+  if(action==='today'){state.month=E.monthOf(today());state.day=today();state.detailsOpen=true;return render()}
   if(action==='toggle-create'){state.createOpen=!state.createOpen;return render()}
   if(action==='create'){return open(kind==='goal'?'goal':kind==='event'?'event':'entry',{kind,date:state.day})}
   if(action==='new-emergency')return open('goal',{kind:'emergency'});
@@ -909,7 +915,7 @@ function bind(){
   if(action==='settings')return open('settings');
   if(action==='portfolio-settings')return open('portfolio-settings');
   if(action==='confirm-portfolio'){
-   try{confirmPortfolio(item,el.dataset.date,Number(el.dataset.amount));}catch(e){state.error=e.message;render();}
+   try{confirmPortfolio(item,el.dataset.date,Number(el.dataset.amount));state.modal={type:'monthly-summary',kind:'reserve'};render();}catch(e){state.error=e.message;render();}
    return;
   }
   if(action==='priority-up'||action==='priority-down'){
@@ -995,7 +1001,7 @@ function bind(){
  formBind('#move-form',e=>{e.preventDefault();try{move(state.modal.kind,state.modal.id,new FormData(e.currentTarget).get('date'),false,state.modal.occurrence)}catch(err){error(err)}});
  updateEntryUI();
  updateGoalUI();
- for(const c of root.querySelectorAll('.albus-day[role="button"]'))c.addEventListener('keydown',e=>{if(e.target===c&&(e.key==='Enter'||e.key===' ')){e.preventDefault();state.day=c.dataset.date;render()}});
+ for(const c of root.querySelectorAll('.albus-day[role="button"]'))c.addEventListener('keydown',e=>{if(e.target===c&&(e.key==='Enter'||e.key===' ')){e.preventDefault();state.day=c.dataset.date;state.detailsOpen=true;render()}});
  // Reordenação de objetivos com mouse, toque e caneta.
  // A alça não altera valores: apenas salva a ordem de prioridade.
  for(const handle of root.querySelectorAll('.albus-goal-handle')){
