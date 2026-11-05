@@ -84,7 +84,11 @@ const AlbusEngine = (function albusEngineFactory() {
       if(!date)return [];
       const o=changes.get(`${entry.id}|${date}`);
       if(o?.deleted)return [];
+      const realized=o?.realized_amount_cents??entry.realized_amount_cents;
+      const planned=entry.planned_amount_cents??entry.amount_cents;
       return [{...entry,...(o||{}),id:entry.id,entry_date:entry.entry_date,occurrence_date:date,
+        planned_amount_cents:planned,
+        amount_cents:realized!==undefined?realized:(o?.amount_cents??entry.amount_cents),
         occurrence_id:`${entry.id}|${date}`,is_recurring:['monthly','business_day_monthly'].includes(entry.frequency)}];
     }).sort((a,b)=>a.occurrence_date.localeCompare(b.occurrence_date));
   }
