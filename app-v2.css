@@ -599,3 +599,29 @@
  .albus-calendar-workspace .albus-chip{font-size:8px;}
  .albus-main-settings{font-size:9px;padding:7px;}
 }
+
+/* O detalhamento acompanha apenas a grade no topo: não flutua pelo scroll. */
+.albus-calendar-workspace .details,
+.albus-calendar-workspace.has-details .details {
+ position:static!important;top:auto!important;align-self:start!important;
+ max-height:none!important;overflow:visible!important;
+}
+/* Conciliação: planejado e realizado, sem botões de aporte na célula do dia. */
+.albus-check-pending{display:inline-flex;margin-top:auto;align-self:flex-start;
+ font-size:9px;font-weight:700;color:#995c24;background:#fff0db;
+ padding:2px 5px;border-radius:5px;line-height:1.3;}
+.albus-reconcile-action{font-size:10px;background:#e8f6f0;color:#146d50;
+ border:1px solid #bee2d1;border-radius:7px;padding:5px 7px;cursor:pointer;}
+.albus-review-goal{display:grid;grid-template-columns:minmax(0,1fr) minmax(120px,150px);
+ gap:10px;padding:12px;border:1px solid #e3e9ef;border-radius:12px;background:#f9fbfd;align-items:end;}
+.albus-review-goal .albus-summary-row-details{grid-column:1/-1;}
+.albus-review-goal .field{margin:0;font-size:11px;}
+.albus-review-goal .field input{width:100%;box-sizing:border-box;}
+.albus-contribution-row{flex-wrap:wrap;}
+.albus-contribution-row .albus-small-confirm{margin-left:auto;}
+@media(max-width:590px){
+ .albus-review-goal{grid-template-columns:1fr 1fr;gap:8px;padding:10px;}
+ .albus-check-pending{font-size:8px;padding:2px 4px;}
+ .albus-reconcile-action{font-size:9px;}
+}
+@media(max-width:380px){.albus-review-goal{grid-template-columns:1fr;}}
