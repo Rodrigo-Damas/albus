@@ -37,12 +37,12 @@ test('saldo remanescente pode ser aproveitado no mês de conclusão',()=>{
  assert.equal(december[1].amount_cents,400000);
  assert.ok(december[1].date>=december[0].date);
 });
-test('confirmar aporte anterior reduz limite disponível no mesmo mês',()=>{
+test('aporte já realizado impede nova previsão para o mesmo objetivo no mês',()=>{
  const db=setup();
  db.entries.push({id:'confirmed',goal_id:'emergency',entry_type:'reserve',
  entry_date:'2026-11-08',amount_cents:200000,status:'set_aside',frequency:'none'});
  const rows=P.rowsForMonth(P.simulate(db,E,G,H,'2026-11',null,3),'2026-11');
- assert.equal(rows.reduce((sum,x)=>sum+x.amount_cents,0),300000);
+ assert.equal(rows.reduce((sum,x)=>sum+x.amount_cents,0),0);
 });
 test('aporte manual ou reserva independente já compromete o limite',()=>{
  const db=setup();
@@ -74,5 +74,5 @@ test('interface contém configuração de limite no resumo, formulário e açõe
  assert.ok(app.includes("'priority-up'"));
  assert.ok(app.includes("'priority-down'"));
  assert.ok(app.includes("reorderPriority(id,hover.dataset.priorityId)"));
- assert.ok(app.includes("Confirmar','confirm-portfolio'"));
+ assert.ok(app.includes("button('Atualizar realizado','review-reserves'"));
 });
