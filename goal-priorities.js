@@ -77,6 +77,8 @@
     }
    }}
    const committed=monthlyCommitted(db,engine,m);
+   const closedGoals=new Set(engine.occurrencesForMonth((db.entries||[]).filter(x=>x.entry_type==='reserve'),db.overrides||[],m,db.settings||{},'cash')
+     .filter(x=>x.goal_id&&(x.goal_reconciliation_month===m||['set_aside','skipped'].includes(x.status))).map(x=>x.goal_id));
    let remaining=Math.max(0,cap.cents-committed.total);
    let amountAllocated=0;
    let lastAllocatedDay=1;
@@ -84,6 +86,7 @@
    for(const goal of queue){
     const current=balances.get(goal.id)||0,desired=money(goal.target_cents),gap=Math.max(0,desired-current);
     if(!gap){if(!estimates.has(goal.id))estimates.set(goal.id,{month:m,completed:step===0,actual:current});continue;}
+    if(closedGoals.has(goal.id))continue; // Um objetivo só pode ser conciliado uma vez por mês.
     const eligible=goal.schedule_enabled!==false,monthly=money(goal.monthly_cents);
     // Prioridade define quem recebe primeiro; o teto individual libera o restante.
     if(!eligible||monthly<=0||remaining<=0)continue;
