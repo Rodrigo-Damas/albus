@@ -26,10 +26,19 @@
   if(!goal)throw Error('Caixinha não encontrada.');
   const paid=cents(amount);
   if(!engine.dateParts(actualDate)||engine.monthOf(actualDate)!==month)throw Error('Escolha uma data dentro do mês conciliado.');
-  if(actualDate>new Date().toISOString().slice(0,10))throw Error('Não é possível confirmar um lançamento futuro.');
+  const d=new Date(),localToday=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+  if(actualDate>localToday)throw Error('Não é possível confirmar um lançamento futuro.');
   const current=byMonth(data,goalId,month);
   const legacy=goalAlreadyCompleted(data,goalId,month,engine,data.settings);
-  if(legacy&&!current)throw Error('Este objetivo já possui um aporte realizado no mês. Ajuste o lançamento existente para evitar duplicidade.');
+  if(legacy&&!current&&legacy.frequency!=='none')throw Error('Já existe um aporte recorrente realizado. Revise aquela ocorrência para evitar duplicidade.');
+  if(legacy&&!current&&legacy.frequency==='none'){
+   const original=(data.entries||[]).find(x=>x.id===legacy.id);
+   if(original)return {...data,entries:(data.entries||[]).map(x=>x.id===original.id?{...x,
+    planned_amount_cents:x.planned_amount_cents??x.amount_cents,
+    amount_cents:paid,realized_amount_cents:paid,realized_date:actualDate,
+    reconciliation_state:paid>0?'confirmed':'not_done',
+    status:paid>0?'set_aside':'skipped',goal_reconciliation_month:month}:x)};
+  }
   if(!current&&!expected)throw Error('Não existe aporte previsto para este objetivo neste mês.');
   const revised={...data,entries:[...(data.entries||[])]};
   const next={...(current||{}),id:current?.id||id(),title:'Reserva conciliada · '+goal.title,
