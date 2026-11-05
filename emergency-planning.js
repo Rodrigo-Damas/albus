@@ -6,16 +6,54 @@
   const VALID_MONTHS=new Set([6,12,18,24]);
   const cents=v=>Math.max(0,Math.round(Number(v)||0));
   const monthOf=x=>String(x||'').slice(0,7);
+  // Só sabemos quais meses têm lançamentos, não se a pessoa registrou tudo.
+  // Evita chamar um mês de "completo" sem confirmação humana.
+  function sampledMonths(engine,entries,overrides,month,kind,basis='all'){
+    const result=[];
+    const read=m=>engine.occurrencesForMonth(entries,overrides,m,{},kind==='income'?'cash':'purchase')
+      .filter(e=>e.entry_type===kind&&(kind!=='expense'||basis!=='essential'||essential.has(e.category)))
+      .reduce((sum,e)=>sum+cents(e.amount_cents),0);
+    for(let n=1;n<=6&&result.length<3;n++){
+      const m=engine.addMonths(month,-n),value=read(m);
+      if(value>0)result.push({month:m,cents:value});
+    }
+    if(result.length)return {items:result,partial:false};
+    const now=read(month);
+    return {items:now>0?[{month,cents:now}]:[],partial:now>0};
+  }
+  function estimate(engine,entries,overrides,month,kind,basis='all',conservative=false){
+    const sample=sampledMonths(engine,entries,overrides,month,kind,basis);
+    const values=sample.items.map(x=>x.cents),n=values.length;
+    if(!n)return {cents:0,months:0,samples:[],partial:false,source:'sem histórico',method:'manual'};
+    const mean=values.reduce((a,b)=>a+b,0)/n;
+    // Com 2–3 meses, 70% da média e 30% do maior mês.
+    // Com apenas 1 mês, usamos exatamente esse mês; nunca o inflamos.
+    const weighted=conservative&&n>1?Math.round(mean*.7+Math.max(...values)*.3):Math.round(mean);
+    const source=sample.partial?'mês atual com lançamentos (pode estar incompleto)':
+      n===1?'1 mês com lançamentos':n+' meses com lançamentos';
+    const method=conservative&&n>1?'70% da média + 30% do maior mês':'média simples';
+    return {cents:weighted,months:n,samples:sample.items,partial:sample.partial,source,method};
+  }
   function recommendedCost(engine,entries,overrides,month,basis='essential'){
-    const completed=[1,2,3].map(n=>engine.addMonths(month,-n));
-    const read=m=>engine.occurrencesForMonth(entries,overrides,m,{},'purchase')
-      .filter(e=>e.entry_type==='expense'&&(basis!=='essential'||essential.has(e.category)))
-      .reduce((s,e)=>s+cents(e.amount_cents),0);
-    const previous=completed.map(read);
-    const positive=previous.filter(x=>x>0);
-    if(positive.length)return {cents:Math.round(positive.reduce((a,b)=>a+b,0)/positive.length),months:positive.length,source:'meses completos'};
-    const current=read(month);
-    return {cents:current,months:current>0?1:0,source:current>0?'mês atual (parcial)':'sem histórico'};
+    return estimate(engine,entries,overrides,month,'expense',basis,true);
+  }
+  function recommendedIncome(engine,entries,overrides,month){
+    return estimate(engine,entries,overrides,month,'income','all',false);
+  }
+  function contributionCapacity(engine,entries,overrides,month,goalId=null,settings={}){
+    const income=recommendedIncome(engine,entries,overrides,month);
+    const outflow=recommendedCost(engine,entries,overrides,month,'all');
+    const current=engine.monthSummary(entries,overrides,month,settings);
+    const goalReserve=current.cash.filter(x=>x.entry_type==='reserve'&&x.goal_id===goalId)
+      .reduce((sum,x)=>sum+cents(x.amount_cents),0);
+    const otherReserves=Math.max(0,current.reserve-goalReserve);
+    if(!income.months||!outflow.months)return {
+      cents:null,income,outflow,otherReserves,provision:current.provision,
+      source:'Histórico insuficiente para sugerir um aporte mensal'
+    };
+    return {cents:Math.max(0,income.cents-outflow.cents-otherReserves-current.provision),
+      income,outflow,otherReserves,provision:current.provision,
+      source:'Margem estimada antes do aporte desta reserva; não é saldo garantido'};
   }
   function suggestedContributionDate(engine,entries,overrides,month){
     const income=engine.occurrencesForMonth(entries,overrides,month,{},'cash')
@@ -76,5 +114,5 @@
     const day=engine.dateParts(goal.contribution_date)?Number(goal.contribution_date.slice(-2)):1;
     return engine.dateInMonth(forecast.estimatedMonth,day);
   }
-  scope.AlbusEmergency={essential,VALID_MONTHS,recommendedCost,suggestedContributionDate,emergencyTarget,isEmergency,scheduledItems,scheduledForMonth,syncSchedule,milestone};
+  scope.AlbusEmergency={essential,VALID_MONTHS,recommendedCost,recommendedIncome,contributionCapacity,sampledMonths,suggestedContributionDate,emergencyTarget,isEmergency,scheduledItems,scheduledForMonth,syncSchedule,milestone};
 })(typeof globalThis!=='undefined'?globalThis:this);
