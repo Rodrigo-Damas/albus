@@ -206,7 +206,7 @@ function monthlySummaryModal(m){
    '<span>Limite mensal de aportes: <b>'+mny(cap.cents)+'</b></span></div>'+
    '<div class="albus-summary-modal-actions">'+button('⚙ Ajustar limite','portfolio-settings','','secondary-button')+
    button('◎ Ver objetivos','open-goals','','secondary-button')+
- button('Atualizar reservas','review-reserves','','primary-button')+'</div>'+
+ button('Atualizar realizado','review-reserves','','primary-button')+'</div>'+
    '<h3>Aportes a confirmar</h3><div class="albus-summary-items">'+
    (planned.map(line).join('')||'<p class="albus-small">Nenhum aporte automático pendente neste mês.</p>')+'</div>'+
    (confirmed.length?'<h3>Aportes realizados</h3>'+confirmed.map(x=>item(x,false)).join(''):'')+
@@ -287,6 +287,9 @@ function calendar(){
     chips.slice(0,2).map(x=>'<span class="albus-chip '+x.kind+'" data-drag-kind="'+x.kind+'" data-drag-id="'+esc(x.id)+'" data-occurrence="'+esc(x.occurrence||'')+'" title="Arraste para reagendar">'+esc(x.title)+'</span>').join('')+
     (chips.length>2?'<span class="albus-overflow">+'+(chips.length-2)+' itens</span>':'')+
     dayRows.filter(x=>x.virtual_portfolio).slice(0,1).map(x=>'<span class="albus-chip reserve">◈ '+esc(x.title)+' · '+mny(x.amount_cents)+'</span>').join('')+
+     (date<today()&&dayRows.some(x=>['expense','income','reserve'].includes(x.entry_type)&&
+       !Z.isReconciled(x)&&!['paid','received','set_aside','skipped'].includes(x.status))?
+       '<span class="albus-check-pending">A conferir</span>':'')+
  goalMilestones(date)+'</div>');
  }
  return '<article class="surface calendar"><div class="albus-month"><div><h2>'+esc(monthTitle(state.month))+'</h2><div class="albus-small">Selecione o dia. Arraste itens para outra data.</div></div>'+
@@ -526,7 +529,7 @@ function goalDetails(m){
  (reached?'<div class="albus-success-goal">Reserva concluída. Considere começar outro objetivo e continue revisando suas despesas e o saldo da reserva.</div>':'')+
  '<p class="albus-small">A projeção não acrescenta rendimentos ao saldo real. Atualize periodicamente o saldo segundo os rendimentos reais do banco ou fundo. Impostos e taxas não são considerados.</p>'+
  '<div class="form-footer">'+(H.isEmergency(goal)?button('Atualizar reserva de emergência','review-emergency','data-id="'+esc(goal.id)+'"','secondary-button'):'')+
- button('Editar','edit-goal','data-id="'+esc(goal.id)+'"','secondary-button')+button('Atualizar reservas do mês','review-reserves','','primary-button')+'</div>');
+ button('Editar','edit-goal','data-id="'+esc(goal.id)+'"','secondary-button')+button('Atualizar realizado do mês','review-reserves','','primary-button')+'</div>');
 }
 function emergencyReview(m){
  // A atualização é uma edição dos valores assumidos pelo usuário.
@@ -603,7 +606,7 @@ function monthlyGoalReviewForm(){
  (x.recorded?' · Já atualizado':' · A conferir')+'</small></div>'+
  (x.editable?'<input type="hidden" name="goal_id" value="'+esc(x.goal.id)+'"/>'+
  '<label class="field">Valor realizado (R$)'+moneyInput('actual_'+x.goal.id,x.actual)+'</label>'+
- '<label class="field">Data da realização<input type="date" name="date_'+esc(x.goal.id)+'" value="'+esc(x.recorded?.realized_date||today())+'" max="'+today()+'" required/></label>':
+ '<label class="field">Data da realização<input type="date" name="date_'+esc(x.goal.id)+'" value="'+esc(x.recorded?.realized_date||(month===E.monthOf(today())?today():E.dateInMonth(month,E.daysInMonth(month))))+'" max="'+today()+'" required/></label>':
  '<p class="albus-small">Aporte antigo recorrente já realizado. Edite a ocorrência original para corrigi-lo.</p>')+
  '</div>').join(''):'<p class="albus-small">Não há aportes com data vencida neste mês. Os futuros continuam como planejamento.</p>')+
  '</div><div class="form-footer">'+button('Cancelar','close','','secondary-button')+
@@ -1031,10 +1034,7 @@ function bind(){
   }
   if(action==='settings')return open('settings');
   if(action==='portfolio-settings')return open('portfolio-settings');
-  if(action==='confirm-portfolio'){
-   try{confirmPortfolio(item,el.dataset.date,Number(el.dataset.amount));state.modal={type:'monthly-summary',kind:'reserve'};render();}catch(e){state.error=e.message;render();}
-   return;
-  }
+  if(action==='confirm-portfolio')return open('review-reserves');
   if(action==='priority-up'||action==='priority-down'){
    const sorted=P.ordered(db.goals),index=sorted.findIndex(g=>g.id===item),other=index+(action==='priority-up'?-1:1);
    if(other>=0&&other<sorted.length)reorderPriority(item,sorted[other].id);
@@ -1044,7 +1044,7 @@ function bind(){
   if(action==='review-emergency')return open('goal',{id:item,review:true});
   if(action==='apply-emergency-review')return open('goal',{id:item,review:true});
   if(action==='edit-goal')return open('goal',{id:item});
-  if(action==='add-contribution')return open('contribution',{id:item});
+  if(action==='add-contribution')return open('review-reserves');
   if(action==='edit-entry')return open('entry',{id:item,occurrence:el.dataset.occurrence||state.day});
   if(action==='reuse-entry')return open('reuse',{id:item,occurrence:el.dataset.occurrence||state.day});
   if(action==='detach-entry'){
