@@ -100,7 +100,9 @@ const AlbusEngine = (function albusEngineFactory() {
       for(const entry of expandMonth(entries,overrides,base)){
         const effectiveOccurrence=entry.moved_to_date&&dateParts(entry.moved_to_date)?entry.moved_to_date:entry.occurrence_date;
         const paidOn=paymentDate({...entry,occurrence_date:effectiveOccurrence},settings);
-        const displayDate=(entry.entry_type==='expense'&&view==='cash')?paidOn:effectiveOccurrence;
+        const plannedDate=(entry.entry_type==='expense'&&view==='cash')?paidOn:effectiveOccurrence;
+        const displayDate=entry.reconciliation_state==='confirmed'&&dateParts(entry.realized_date)
+          ?(view==='cash'?entry.realized_date:effectiveOccurrence):plannedDate;
         if(monthOf(displayDate)===month)out.push({...entry,payment_date_effective:paidOn,display_date:displayDate});
       }
     }
