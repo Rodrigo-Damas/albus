@@ -143,3 +143,23 @@ A ordem do menu **Criar** passou a ser **Despesa → Receita → Evento → Obje
 **Atenção:** a cópia é contabilizada como uma despesa adicional. Não se trata apenas de um vínculo visual que reutiliza o mesmo pagamento. Em caso de gasto único compartilhado por dois eventos, o usuário deve evitar copiar para não duplicar financeiramente.
 
 Testes: `tests/expense-reuse.test.cjs`, mais verificação isolada do arrastar para um dia. A PR segue aberta, sem merge.
+
+## Reserva de emergência como primeiro objetivo e aportes automáticos (05/11/2026)
+
+A seção financeira antes chamada "Reservas e imprevistos" agora se chama **Reservas, objetivos e imprevistos**, somando apenas aportes `reserve` efetivamente previstos no mês e a provisão de imprevistos. O valor configurado como objetivo `monthly_cents` **não é somado separadamente**: ele origina, quando solicitado, exatamente uma série mensal de lançamentos `reserve` associados à meta.
+
+A primeira caixinha sugerida, destacada em verde, é **Reserva de emergência**; ela é priorizada também quando já existe. O cadastro pergunta:
+- Receita familiar mensal de referência, sugerida com base nas receitas cadastradas.
+- Custo mensal essencial de referência, sugerido pela média de até três meses completos anteriores (ou mês corrente parcial se não houver histórico); pode ser corrigido pelo usuário.
+- Cobertura de 6, 12, 18 ou 24 meses, calculando a meta automaticamente pela multiplicação.
+- Saldo inicial efetivamente guardado, aporte mensal pretendido, rentabilidade de referência e dia do calendário em que deseja contribuir.
+
+O aplicativo sugere **o dia seguinte ao principal recebimento previsto**, quando houver receitas cadastradas. A data é editável e se repete mensalmente, ajustando-se para o último dia nos meses curtos.
+
+A programação gera um lançamento recorrente **planejado** `reserve` associado ao objetivo: conta no compromisso orçamentário e no cabeçalho, mas **não aumenta o saldo real** enquanto não for confirmado. Confirmações de ocorrências seguem o mecanismo de `overrides`. O calendário mostra um marcador verde para **conquista prevista** no mês e dia de aporte projetados, distinto da mensagem de **meta atingida** quando o saldo real chegar a 100%. Depois de alcançar a meta, o aplicativo recomenda novos objetivos.
+
+A rentabilidade pelo CDI permanece uma simulação; não é creditada automaticamente. O usuário é orientado a reconciliar o saldo real com os rendimentos do banco ou fundo de investimento, sem supor que a taxa permaneça constante.
+
+**Compatibilidade e segurança:** chaves `albus-calendar-local-v1` e `albus-calendar-local-v1-snapshot` mantidas. Ao salvar a meta, `goals` e a série recorrente são gravadas atomicamente pelo mecanismo de backup já existente, antes de atualizar a memória da interface. Editar aporte, dia ou participante encerra a série automática antiga após o mês corrente e inicia a nova no próximo mês, preservando ocorrências e confirmações anteriores. Uma série mensal pré-existente, cadastrada pelo usuário antes desta versão, não será duplicada automaticamente. Sem sincronização entre dispositivos ou login real.
+
+Arquivos: `emergency-planning.js`, `app-v3.js`, `engine.js`, `app-v2.css` e testes `tests/emergency-reserve.test.cjs` (11 casos). Testes do motor e renderização inicial passaram; ainda é necessária revisão manual do fluxo completo de cadastro, confirmação de aportes e layout em celulares.
