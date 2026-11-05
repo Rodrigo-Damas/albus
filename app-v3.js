@@ -27,8 +27,10 @@ const db=load(),state={user:'rodrigo',filter:'all',month:E.monthOf(today()),day:
 const safe=()=>{try{B.save(localStorage,db);return true}catch(e){state.error='Não foi possível salvar no armazenamento local. Exporte um backup e verifique o espaço disponível.';return false}};
 const visible=items=>A.visibleItems(items,state.user,state.filter);
 const entries=()=>visible(db.entries), events=()=>visible(db.events),goals=()=>visible(db.goals);
+let planCache=null;
 function plan(){
- return P.active(db.settings)?P.simulate(db,E,G,H,E.monthOf(today()),state.cdi):null;
+ if(!P.active(db.settings))return null;
+ return planCache||(planCache=P.simulate(db,E,G,H,E.monthOf(today()),state.cdi));
 }
 function cashRows(month=state.month,view=db.settings.view){
  if(!P.active(db.settings))return E.occurrencesForMonth(entries(),db.overrides,month,db.settings,view);
@@ -368,6 +370,8 @@ function submitEventExpense(ev){
 }
 function goalForm(m){
  const existing=db.goals.find(x=>x.id===m.id),old=existing||{};
+ const cap=P.budget(db,E,H,E.monthOf(today()));
+ const suggestedContribution=P.active(db.settings)?cap.cents:P.suggestedLimit(db,E,H,E.monthOf(today()),db.settings).cents;
  const isEmergency=H.isEmergency(old)||(!existing&&m.kind==='emergency');
  const suggested=H.recommendedCost(E,entries(),db.overrides,E.monthOf(today()),'essential');
  const suggestedIncome=H.recommendedIncome(E,entries(),db.overrides,E.monthOf(today()));
@@ -397,10 +401,13 @@ function goalForm(m){
  '</section>'+
  '<div class="field-row"><div class="field"><label>Meta total (R$)</label>'+moneyInput('target',old.target_cents||(isEmergency?cost*months:0),'required')+'</div>'+
  '<div class="field"><label>Saldo inicial real (R$)</label>'+moneyInput('initial',old.initial_cents||0)+'</div></div>'+
- '<div class="field-row"><div class="field"><label>Aporte mensal pretendido (R$)</label>'+moneyInput('monthly',old.monthly_cents||0)+'</div>'+
+ '<div class="field-row"><div class="field"><label>Aporte mensal pretendido (R$)</label>'+moneyInput('monthly',old.monthly_cents??(suggestedContribution??0))+
+ '<div class="albus-small">Sugestão de aporte: '+(suggestedContribution===null?'sem dados suficientes':mny(suggestedContribution))+
+ '. Calculado após gastos, reservas existentes e imprevistos. '+(P.active(db.settings)?'Limite mensal global configurado: '+mny(cap.cents)+'.':'Você pode definir seu limite no quadro financeiro.')+
+ ' Confirme se o valor cabe no seu orçamento.</div></div>'+
  '<div class="field"><label>% do CDI (projeção)</label><input name="cdi_percent" type="number" min="0" max="300" step=".1" required value="'+(old.cdi_percent??100)+'"/></div></div>'+
  '<div class="albus-schedule-fields"><label class="field-checkbox"><input name="schedule_enabled" id="goal-schedule" type="checkbox" '+
- (existing?old.schedule_enabled===true?'checked':'': 'checked')+'/> Criar automaticamente um aporte mensal recorrente no calendário</label>'+
+ (existing?old.schedule_enabled===true?'checked':'': 'checked')+'/> '+(P.active(db.settings)?'Participar da fila de aportes mensais por prioridade':'Criar automaticamente um aporte mensal recorrente no calendário')+'</label>'+
  '<div class="field"><label>Em qual dia deseja reservar?</label><input type="date" name="contribution_date" id="goal-contribution-date" value="'+esc(goalDate)+'" required/></div>'+
  '<div class="albus-small">'+(suggestedDate?'Sugestão: '+fmt(suggestedDate)+' (após a principal receita do mês). ':'')+'A data escolhida define o dia de cada mês, com ajuste para meses curtos. O aporte fica previsto no orçamento e só entra no saldo real quando confirmado.</div></div>'+
  '<div class="field"><label>CDI anual manual (%) para contingência</label><input name="manual_cdi_annual" type="number" min="0" max="100" step=".01" value="'+(old.manual_cdi_annual??'')+'" placeholder="Opcional, se a consulta falhar"/></div>'+
@@ -517,6 +524,57 @@ function submitReuse(e){
  try{const f=new FormData(e.currentTarget);reuseExpense(state.modal.id,String(f.get('date')||state.day),String(f.get('event_id')||''),state.modal.occurrence);}
  catch(err){error(err);}
 }
+function portfolioSettings(){
+ const suggestion=P.suggestedLimit(db,E,H,E.monthOf(today()),db.settings);
+ const current=P.budget(db,E,H,E.monthOf(today()));
+ const proposed=suggestion.cents??0;
+ const preview=H.recommendedIncome(E,P.baseEntries(db),db.overrides,E.monthOf(today()));
+ return modal('Limite mensal de investimentos e prioridades',
+ '<form id="portfolio-settings-form">'+
+ '<div class="albus-warning">A reserva de emergência tem prioridade fixa. Os outros objetivos recebem aportes em sequência, conforme a ordem das caixinhas e o limite mensal. Não serão criados novos lançamentos recorrentes permanentes: as parcelas futuras são projeções até confirmação.</div>'+
+ '<div class="field"><label>Limite total de aportes por mês (R$)</label>'+moneyInput('budget_limit',current.cents,'required')+'</div>'+
+ '<p class="albus-small">Sugestão baseada no histórico: '+(suggestion.available?mny(proposed):'ainda não disponível')+
+ '. Considera receitas e despesas anteriores, outras reservas e provisões de imprevistos. Estimativa, não disponibilidade garantida. Você pode definir seu limite manualmente.</p>'+
+ '<div class="albus-review-columns"><div><small>Receita estimada</small><strong>'+mny(preview.cents)+'</strong></div>'+
+ '<div><small>Despesas totais estimadas</small><strong>'+mny(suggestion.outflow.cents)+'</strong></div></div>'+
+ '<label class="field-checkbox"><input type="checkbox" name="priority_mode" '+(P.active(db.settings)?'checked':'')+'/> Ativar fila de prioridades e distribuir automaticamente as previsões de aportes</label>'+
+ '<p class="albus-small">Ao ativar, previsões automáticas antigas deixam de ser somadas. Aportes já realizados permanecem intactos. Ao desativar, voltam a ser exibidas as recorrências que já existiam.</p>'+
+ '<div class="form-footer">'+button('Cancelar','close','','secondary-button')+' <button type="submit" class="primary-button">Salvar limite e prioridades</button></div>'+
+ '</form>');
+}
+function savePortfolioSettings(ev){
+ ev.preventDefault();
+ try{
+  const f=new FormData(ev.currentTarget),limit=E.parseMoney(f.get('budget_limit'));
+  const next={...db,settings:{...db.settings,goal_budget_limit_cents:limit,
+   goal_allocation_mode:f.has('priority_mode')?'priority':'legacy'}};
+  B.save(localStorage,next);
+  Object.assign(db,next);
+  state.modal=null;state.message=P.active(db.settings)?'Fila ativada. A reserva de emergência recebe aportes primeiro, respeitando o limite definido.':'Limite salvo. A fila de prioridades está desativada.';
+  render();
+ }catch(e){error(e)}
+}
+function reorderPriority(sourceId,targetId){
+ const next={...db,goals:P.reorder(db.goals,sourceId,targetId)};
+ if(JSON.stringify(next.goals)===JSON.stringify(db.goals))return;
+ try{B.save(localStorage,next);Object.assign(db,next);state.message='Prioridades atualizadas.';render();}
+ catch(e){state.error='Erro ao salvar a ordem: '+e.message;render()}
+}
+function confirmPortfolio(itemId,date,amount){
+ const goal=goals().find(g=>g.id===itemId);
+ if(!P.active(db.settings)||!goal||!E.dateParts(date))throw Error('Objetivo ou data indisponível.');
+ const candidate=cashRows(E.monthOf(date),'cash').find(x=>x.virtual_portfolio&&x.goal_id===itemId&&x.entry_date===date);
+ if(!candidate||candidate.amount_cents!==amount)throw Error('O planejamento foi alterado. Reabra a data e confira o aporte.');
+ const contribution=A.normalizeItem({id:id(),entry_type:'reserve',goal_id:itemId,
+   title:'Aporte confirmado · '+goal.title,entry_date:date,amount_cents:amount,
+   status:'set_aside',frequency:'none',payment_method:'pix',category:'Precaução',
+   created_by:state.user,responsible_ids:goal.responsible_ids,
+   visibility:goal.visibility,workspace_id:A.WORKSPACE_ID});
+ const next={...db,entries:[...db.entries,contribution]};
+ B.save(localStorage,next);Object.assign(db,next);
+ state.message='Aporte confirmado no saldo real. A fila foi recalculada.';
+ render();
+}
 function settingsForm(){
  const s=db.settings;
  return modal('Cartão e imprevistos','<form id="settings-form"><div class="field-row"><div class="field"><label>Fechamento</label><input type="number" min="1" max="31" required name="closingDay" value="'+s.closingDay+'"/></div>'+
@@ -534,6 +592,7 @@ function moveForm(m){
 }
 function render(){
  closeHelp();
+ planCache=null;
  const s=summary();
  root.innerHTML='<div class="albus-shell"><header class="albus-top"><div class="albus-brand"><span class="brand-icon">♥</span>albus<span class="brand-dot">.</span></div>'+
  '<div class="albus-top-center">Calendário e planejamento da família</div><div class="albus-top-right"><button type="button" class="albus-backup-button" data-action="export-backup" title="Baixar cópia dos cadastros deste navegador">↓ Backup</button><button type="button" class="albus-backup-button" data-action="import-backup" title="Importar sem sobrescrever lançamentos">↑ Importar</button><input id="backup-file" type="file" accept="application/json,.json" hidden/> Perfil de teste <select id="demo-user">'+
@@ -556,6 +615,7 @@ function render(){
  state.modal?.type==='emergency-review'?emergencyReview(state.modal):
  state.modal?.type==='contribution'?contributionForm(state.modal):
  state.modal?.type==='settings'?settingsForm():
+ state.modal?.type==='portfolio-settings'?portfolioSettings():
  state.modal?.type==='move'?moveForm(state.modal):
  state.modal?.type==='reuse'?reuseForm(state.modal):''
  )+'</div>';
@@ -661,14 +721,15 @@ function submitGoal(ev){
   income_reference_cents:emergency?E.parseMoney(f.get('income_reference')):0,
   coverage_months:emergency?coverage:null,contribution_date:date,schedule_enabled:schedule,
   cdi_percent:percent,manual_cdi_annual:manual===''?null:Number(manual)};
- const goal={...(old||{}),id:old?.id||id(),...value};
+ const goal={...(old||{}),id:old?.id||id(),...value,
+  priority_index:old?.priority_index??db.goals.length};
  const next={...db,goals:old?db.goals.map(g=>g.id===goal.id?goal:g):[...db.goals,goal]};
- const planned=H.syncSchedule(next,goal,E,today(),id);
+ const planned=P.active(db.settings)?next:H.syncSchedule(next,goal,E,today(),id);
  // A meta, o calendário recorrente e os dados anteriores são salvos juntos.
  B.save(localStorage,planned);
  Object.assign(db,planned);
  state.modal=null;
- state.message=goal.schedule_enabled?'Objetivo salvo e aporte mensal previsto no calendário. Confirme cada depósito para atualizar o saldo real.':'Objetivo salvo. Os aportes podem ser registrados a qualquer momento.';
+ state.message=goal.schedule_enabled?(P.active(db.settings)?'Objetivo salvo na fila de prioridades. O calendário mostra aportes até o limite mensal configurado.':'Objetivo salvo e aporte mensal previsto no calendário. Confirme cada depósito para atualizar o saldo real.'):'Objetivo salvo. Os aportes podem ser registrados a qualquer momento.';
  render();
  }catch(e){error(e)}
 }
@@ -777,6 +838,16 @@ function bind(){
    return render();
   }
   if(action==='settings')return open('settings');
+  if(action==='portfolio-settings')return open('portfolio-settings');
+  if(action==='confirm-portfolio'){
+   try{confirmPortfolio(item,el.dataset.date,Number(el.dataset.amount));}catch(e){state.error=e.message;render();}
+   return;
+  }
+  if(action==='priority-up'||action==='priority-down'){
+   const sorted=P.ordered(db.goals),index=sorted.findIndex(g=>g.id===item),other=index+(action==='priority-up'?-1:1);
+   if(other>=0&&other<sorted.length)reorderPriority(item,sorted[other].id);
+   return;
+  }
   if(action==='goal-details')return open('goal-details',{id:item});
   if(action==='review-emergency')return open('emergency-review',{id:item});
   if(action==='apply-emergency-review')return open('goal',{id:item,review:true});
@@ -840,6 +911,7 @@ function bind(){
  listen('#all-members',e=>{root.querySelectorAll('input[name="responsible_ids"]').forEach(i=>{if(!i.disabled)i.checked=e.target.checked})});
  for(const field of root.querySelectorAll('input[name="responsible_ids"]'))field.addEventListener('change',()=>{const all=root.querySelector('#all-members');if(all)all.checked=[...root.querySelectorAll('input[name="responsible_ids"]')].every(x=>x.checked)});
  const formBind=(name,fn)=>root.querySelector(name)?.addEventListener('submit',fn);
+ formBind('#portfolio-settings-form',savePortfolioSettings);
  formBind('#reuse-form',submitReuse);formBind('#entry-form',submitEntry);formBind('#event-form',submitEvent);formBind('#event-expense-form',submitEventExpense);formBind('#goal-form',submitGoal);formBind('#contribution-form',submitContribution);formBind('#settings-form',submitSettings);
  formBind('#move-form',e=>{e.preventDefault();try{move(state.modal.kind,state.modal.id,new FormData(e.currentTarget).get('date'),false,state.modal.occurrence)}catch(err){error(err)}});
  updateEntryUI();
