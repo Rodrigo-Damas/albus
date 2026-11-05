@@ -69,6 +69,7 @@
    const already=fixedContributions(db,engine,m);
    let remaining=Math.max(0,cap.cents-already);
    let amountAllocated=0;
+   let previousCompletedDay=1;
    const monthAlloc=[];
    for(const goal of queue){
     const current=balances.get(goal.id)||0,desired=money(goal.target_cents),gap=Math.max(0,desired-current);
@@ -79,15 +80,17 @@
     const amount=Math.min(remaining,gap,monthly);
     if(amount>0){
      const dueDay=Number(String(goal.contribution_date||now+'-01').slice(-2))||1;
-     const date=engine.dateInMonth(m,dueDay);
+     const date=engine.dateInMonth(m,Math.max(dueDay,previousCompletedDay));
      monthAlloc.push({goal_id:goal.id,goal_title:goal.title,date,month:m,amount_cents:amount,
       priority:queue.findIndex(x=>x.id===goal.id)+1});
      balances.set(goal.id,current+amount);
      remaining-=amount;amountAllocated+=amount;
     }
     if((balances.get(goal.id)||0)>=desired){
+     if(monthAlloc.some(x=>x.goal_id===goal.id))
+       previousCompletedDay=Number(monthAlloc.find(x=>x.goal_id===goal.id).date.slice(-2));
      if(!estimates.has(goal.id))estimates.set(goal.id,{month:m,completed:false,actual:balances.get(goal.id)});
-     // O saldo que restou no mesmo mês pode passar à próxima meta.
+     // O saldo que restou no mesmo mês pode passar à próxima meta, nunca antes dessa data.
     }else break;
    }
    results.set(m,monthAlloc);
