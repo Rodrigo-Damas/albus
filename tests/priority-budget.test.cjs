@@ -23,9 +23,10 @@ test('limite de R$ 5 mil não é ultrapassado',()=>{
   assert.ok(allocations.reduce((sum,x)=>sum+x.amount_cents,0)<=500000);
  }
 });
-test('carro só começa depois de completar reserva',()=>{
+test('carro recebe a sobra do limite mesmo com reserva em andamento',()=>{
  const sim=P.simulate(setup(),E,G,H,'2026-11',null,6);
  assert.equal(sim.results.get('2026-11')[0].goal_id,'emergency');
+ assert.equal(sim.results.get('2026-11').length,1);
  assert.equal(sim.results.get('2026-12')[0].goal_id,'emergency');
  assert.equal(sim.results.get('2027-01')[0].goal_id,'car');
 });
@@ -50,10 +51,10 @@ test('aporte manual ou reserva independente já compromete o limite',()=>{
  const rows=P.rowsForMonth(P.simulate(db,E,G,H,'2026-11',null,3),'2026-11');
  assert.equal(rows[0].amount_cents,400000);
 });
-test('modo não ativado preserva recorrências existentes',()=>{
+test('fila permanece ativa com configurações antigas',()=>{
  const db=setup();db.settings.goal_allocation_mode='legacy';
- assert.equal(P.active(db.settings),false);
- assert.equal(P.simulate(db,E,G,H,'2026-11').results.size,0);
+ assert.equal(P.active(db.settings),true);
+ assert.ok(P.simulate(db,E,G,H,'2026-11').results.size>0);
 });
 test('reordenar duas metas preserva a reserva em primeiro',()=>{
  const goals=[emergency(),{...car(),priority_index:1},{...car(),id:'trip',title:'Viagem',priority_index:2}];
