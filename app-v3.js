@@ -1,7 +1,7 @@
 
 (function(){
 'use strict';
-const E=AlbusEngine,A=AlbusAccess,G=AlbusGoals,M=AlbusMoneyMask,B=AlbusBackup,R=AlbusExpenseReuse,H=AlbusEmergency;
+const E=AlbusEngine,A=AlbusAccess,G=AlbusGoals,M=AlbusMoneyMask,B=AlbusBackup,R=AlbusExpenseReuse,H=AlbusEmergency,P=AlbusPriorities;
 const KEY='albus-calendar-local-v1',root=document.getElementById('app');
 const TYPES={event:'Evento',expense:'Despesa',income:'Receita',goal:'Objetivo',task:'Tarefa',reserve:'Reserva ou investimento'};
 const CATEGORIES=['Salário','Alimentação','Transporte','Saúde','Moradia','Lazer','Educação','Casa','Pessoal','Outros','Precaução'];
@@ -27,8 +27,28 @@ const db=load(),state={user:'rodrigo',filter:'all',month:E.monthOf(today()),day:
 const safe=()=>{try{B.save(localStorage,db);return true}catch(e){state.error='Não foi possível salvar no armazenamento local. Exporte um backup e verifique o espaço disponível.';return false}};
 const visible=items=>A.visibleItems(items,state.user,state.filter);
 const entries=()=>visible(db.entries), events=()=>visible(db.events),goals=()=>visible(db.goals);
-const monthlyRows=(month=state.month,view=db.settings.view)=>E.occurrencesForMonth(entries(),db.overrides,month,db.settings,view);
-const summary=()=>E.monthSummary(entries(),db.overrides,state.month,db.settings);
+function plan(){
+ return P.active(db.settings)?P.simulate(db,E,G,H,E.monthOf(today()),state.cdi):null;
+}
+function cashRows(month=state.month,view=db.settings.view){
+ if(!P.active(db.settings))return E.occurrencesForMonth(entries(),db.overrides,month,db.settings,view);
+ const kept=entries().filter(x=>!x.auto_scheduled);
+ const confirmed=P.confirmedLegacy(db,month,E,db.settings)
+  .filter(x=>A.visibleItems([x],state.user,state.filter).length);
+ const virtual=month>=E.monthOf(today())?P.rowsForMonth(plan(),month)
+  .filter(x=>goals().some(g=>g.id===x.goal_id)):[];
+ return [...E.occurrencesForMonth(kept,db.overrides,month,db.settings,view),...confirmed,...virtual]
+ .sort((a,b)=>a.display_date.localeCompare(b.display_date));
+}
+const monthlyRows=(month=state.month,view=db.settings.view)=>cashRows(month,view);
+function summary(){
+ if(!P.active(db.settings))return E.monthSummary(entries(),db.overrides,state.month,db.settings);
+ const regular=E.monthSummary(entries().filter(x=>!x.auto_scheduled),db.overrides,state.month,db.settings);
+ const bonus=cashRows(state.month,'cash').filter(x=>x.virtual_portfolio||x.auto_scheduled&&x.status==='set_aside');
+ const extra=bonus.reduce((sum,x)=>sum+Number(x.amount_cents||0),0);
+ return {...regular,reserve:regular.reserve+extra,valueToAssign:regular.valueToAssign-extra,
+  cash:[...regular.cash,...bonus],setAside:regular.setAside+bonus.filter(x=>x.status==='set_aside').reduce((sum,x)=>sum+x.amount_cents,0)};
+}
 function button(label,action,more='',klass='outline-button'){return '<button type="button" class="'+klass+'" data-action="'+action+'" '+more+'>'+label+'</button>'}
 function modal(title,content){return '<div class="albus-modal-backdrop"><section class="albus-modal" role="dialog" aria-modal="true"><div class="modal-header"><h2>'+esc(title)+'</h2>'+button('×','close','aria-label="Fechar"','close-btn')+'</div>'+content+'</section></div>'}
 function ownerInputs(item){
@@ -50,25 +70,39 @@ function createMenu(){
 }
 function project(g){
  // Data-base fixa para a previsão; navegar para outro mês não altera o prazo.
+ if(P.active(db.settings)){
+   const f=G.forecast(g,db.entries,state.cdi,E.monthOf(today()),db.overrides);
+   const estimate=plan().estimates.get(g.id);
+   return {...f,estimatedMonth:estimate?.month||null,monthsToGoal:estimate?P.monthIndex(E,E.monthOf(today()),estimate.month):null};
+ }
  return G.forecast(g,db.entries,state.cdi,E.monthOf(today()),db.overrides);
 }
 function showGoalCard(g){
  const f=project(g),percent=Math.min(100,Math.max(0,f.progress)),priority=H.isEmergency(g);
+ const waiting=P.active(db.settings)&&!plan().results.get(E.monthOf(today()))?.some(x=>x.goal_id===g.id)&&!reachedTarget(g);
+ function reachedTarget(goal){return G.realBalance(goal,db.entries,db.overrides)>=goal.target_cents;}
  const reached=percent>=100;
  return '<button class="albus-goal-card'+(priority?' albus-emergency-goal':'')+'" data-action="goal-details" data-id="'+esc(g.id)+'">'+
  '<span class="albus-goal-label">'+(priority?'♧ Reserva de emergência':'◈ '+esc(g.title))+'</span>'+
  '<strong>'+mny(f.actual)+'</strong><span class="albus-goal-hint">de '+mny(f.target)+' · '+Math.round(percent)+'%</span>'+
  '<span class="albus-progress"><span style="width:'+percent+'%"></span></span>'+
- '<small>'+(reached?'Meta alcançada · crie novos objetivos':('Aporte: '+mny(f.monthly)+'/mês'))+'</small>'+
+ '<small>'+(reached?'Meta alcançada · crie novos objetivos':waiting?'Aguardando objetivo anterior':'Aporte desejado: '+mny(f.monthly)+'/mês')+'</small>'+
  (f.estimatedMonth&&!reached?'<small>Previsão: '+esc(monthTitle(f.estimatedMonth))+'</small>':'')+'</button>';
 }
 function goalCards(){
- const listed=goals().slice().sort((x,y)=>Number(H.isEmergency(y))-Number(H.isEmergency(x)));
+ const listed=P.ordered(goals());
  const hasEmergency=db.goals.some(H.isEmergency);
- return '<section class="albus-goals"><div class="albus-goals-head"><div><strong>Objetivos e reservas</strong><span>Caixinhas, aportes recorrentes e previsões</span></div>'+
+ return '<section class="albus-goals"><div class="albus-goals-head"><div><strong>Objetivos e reservas</strong><span>Arraste para priorizar · Reserva de emergência sempre primeiro</span></div>'+
+ button('⚙ Limite mensal','portfolio-settings','','albus-tiny-button')+
  button('+ Nova caixinha','create','data-kind="goal"','albus-tiny-button')+'</div><div class="albus-goals-grid">'+
  (!hasEmergency?'<button type="button" class="albus-goal-placeholder albus-emergency-suggestion" data-action="new-emergency">♧ Comece pela Reserva de emergência · 6, 12, 18 ou 24 meses de despesas</button>':'')+
- listed.map(showGoalCard).join('')+
+ listed.map(g=>'<div class="albus-priority-item" data-priority-id="'+esc(g.id)+'">'+showGoalCard(g)+
+ (listed.length>1?'<div class="albus-priority-controls">'+
+ (H.isEmergency(g)?'<small>Prioridade fixa</small>':
+ button('↑','priority-up','data-id="'+esc(g.id)+'" aria-label="Subir objetivo"','albus-tiny-button')+
+ button('↓','priority-down','data-id="'+esc(g.id)+'" aria-label="Descer objetivo"','albus-tiny-button')+
+ '<span class="albus-goal-handle" title="Arraste para mudar prioridade">⠿</span>')+
+ '</div>':'')+'</div>').join('')+
  (!listed.length&&hasEmergency?'<span class="albus-small">Objetivos ocultos pelo filtro de participantes.</span>':'')+
  '</div><div class="albus-cdi-meta">'+(state.cdi?'CDI de referência: '+state.cdi.annualPercent.toFixed(2).replace('.',',')+'% a.a. (estimado), dado '+esc(state.cdi.rateDate||'em cache')+(state.cdi.stale?' · atualização indisponível':''):'CDI automático: aguardando consulta. Você pode informar uma taxa manual.')+
  ' <span>Atualize o saldo com os rendimentos reais do seu banco ou investimento.</span></div>'+
@@ -99,7 +133,7 @@ function dashboardCards(){
  [balance<0?'Déficit a cobrir':balance===0?'Orçamento distribuído':'Valor a destinar',balance,
   balance<0?'Receitas insuficientes para cobrir as saídas previstas':balance===0?'Planejamento equilibrado':'Disponível para distribuir','balance']
  ];
- const paid=cashSources(E.occurrencesForMonth(entries(),db.overrides,state.month,db.settings,'cash'),state.month);
+ const paid=cashSources(cashRows(state.month,'cash'),state.month);
  return '<section class="albus-summary albus-compact-summary">'+data.map(x=>'<article class="summary-card '+x[3]+(x[3]==='balance'&&x[1]===0?' zero':'')+(x[3]==='balance'&&x[1]<0?' negative':'')+'"><div class="summary-kicker">'+esc(x[0])+'</div><div class="summary-value">'+mny(x[1])+'</div><div class="summary-meta">'+esc(x[2])+'</div>'+
  (x[3]==='balance'&&x[1]<0?'<div class="albus-deficit-message" role="status">As despesas, reservas e imprevistos previstos superaram as receitas do mês.</div>':'')+'</article>').join('')+'</section>'+
  '<section class="albus-month-origin"><div class="albus-origin-heading"><strong>Origem dos pagamentos em '+esc(m)+'</strong><span>Faturas de compras anteriores vencem agora, sem duplicar o gasto.</span></div>'+
@@ -166,12 +200,13 @@ function calendar(){
    const date=state.month+'-'+String(d).padStart(2,'0'),dayRows=rows.filter(x=>x.display_date===date);
    const ev=events().filter(x=>x.date===date),inc=dayRows.filter(x=>x.entry_type==='income').reduce((v,x)=>v+Number(x.amount_cents||0),0);
    const exp=dayRows.filter(x=>x.entry_type==='expense').reduce((v,x)=>v+Number(x.amount_cents||0),0);
-   const chips=[...ev.map(x=>({kind:'event',id:x.id,title:x.title})),...dayRows.filter(x=>x.entry_type!=='income'&&(!x.event_id||!ev.some(y=>y.id===x.event_id))).map(x=>({kind:'entry',id:x.id,title:x.title,occurrence:x.occurrence_date}))];
+   const chips=[...ev.map(x=>({kind:'event',id:x.id,title:x.title})),...dayRows.filter(x=>x.entry_type!=='income'&&!x.virtual_portfolio&&(!x.event_id||!ev.some(y=>y.id===x.event_id))).map(x=>({kind:'entry',id:x.id,title:x.title,occurrence:x.occurrence_date}))];
    out.push('<div role="button" tabindex="0" class="albus-day '+(date===state.day?'selected ':'')+(date===today()?'today':'')+'" data-action="day" data-date="'+date+'" data-drop-date="'+date+'"><span class="albus-day-number">'+d+'</span>'+
     (inc?'<span class="albus-money in">+ '+mny(inc)+'</span>':'')+(exp?'<span class="albus-money out">− '+mny(exp)+'</span>':'')+
     chips.slice(0,2).map(x=>'<span class="albus-chip '+x.kind+'" data-drag-kind="'+x.kind+'" data-drag-id="'+esc(x.id)+'" data-occurrence="'+esc(x.occurrence||'')+'" title="Arraste para reagendar">'+esc(x.title)+'</span>').join('')+
     (chips.length>2?'<span class="albus-overflow">+'+(chips.length-2)+' itens</span>':'')+
-    goalMilestones(date)+'</div>');
+    dayRows.filter(x=>x.virtual_portfolio).slice(0,1).map(x=>'<span class="albus-chip reserve">◈ '+esc(x.title)+' · '+mny(x.amount_cents)+'</span>').join('')+
+ goalMilestones(date)+'</div>');
  }
  return '<article class="surface calendar"><div class="albus-month"><div><h2>'+esc(monthTitle(state.month))+'</h2><div class="albus-small">Selecione o dia. Arraste itens para outra data.</div></div>'+
  '<div class="albus-month-actions">'+button('Hoje','today','','outline-button albus-calendar-today')+button('‹','previous','','icon-button')+button('›','next','','icon-button')+'</div></div>'+
@@ -199,6 +234,10 @@ function row(x,child=false){
  linked?'Evento: '+linked.title:'',x.payment_method==='credit'&&x.entry_type==='expense'?'Compra '+fmt(x.occurrence_date):'',
  earlier?'Compra anterior · paga neste mês':'',
  due&&x.payment_method==='credit'?'Vence '+fmt(due):''].filter(Boolean).join(' · ');
+ if(x.virtual_portfolio)return '<div class="albus-row albus-virtual-row"><span class="albus-grip">◈</span>'+
+ '<span class="text"><b>'+esc(x.title)+'</b><div class="caption">Aporte previsto · prioridade '+x.priority+' · confirme para registrar no saldo real</div></span>'+
+ '<span class="albus-entry-price">'+mny(x.amount_cents)+'</span>'+
+ button('Confirmar','confirm-portfolio','data-id="'+esc(x.goal_id)+'" data-date="'+esc(x.entry_date)+'" data-amount="'+x.amount_cents+'"','albus-tiny-button')+'</div>';
  return '<div class="albus-row" data-drag-kind="entry" data-drag-id="'+esc(x.id)+'" data-occurrence="'+esc(x.occurrence_date||x.entry_date)+'"><span class="albus-grip albus-drag-handle" title="Segure e arraste">⠿</span>'+
  '<span class="text"><b>'+esc(x.title)+'</b><div class="caption">'+esc(desc)+'</div></span>'+
  (x.entry_type==='task'?'':'<span class="albus-entry-price '+(x.entry_type==='income'?'in':'')+'">'+mny(x.amount_cents)+'</span>')+
@@ -209,7 +248,7 @@ function row(x,child=false){
 }
 function details(){
  const day=state.day,ev=events().filter(x=>x.date===day),entriesAt=monthlyRows().filter(x=>x.display_date===day),linked=new Set(ev.map(x=>x.id));
- const daySources=cashSources(E.occurrencesForMonth(entries(),db.overrides,state.month,db.settings,'cash').filter(x=>x.display_date===day),state.month);
+ const daySources=cashSources(cashRows(state.month,'cash').filter(x=>x.display_date===day),state.month);
  const others=entriesAt.filter(x=>!linked.has(x.event_id));
  let eventHTML=ev.map(x=>{
    const children=entries().filter(y=>y.event_id===x.id);
