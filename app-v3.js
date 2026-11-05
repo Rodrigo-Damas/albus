@@ -1,7 +1,7 @@
 
 (function(){
 'use strict';
-const E=AlbusEngine,A=AlbusAccess,G=AlbusGoals,M=AlbusMoneyMask,B=AlbusBackup,R=AlbusExpenseReuse,H=AlbusEmergency,P=AlbusPriorities;
+const E=AlbusEngine,A=AlbusAccess,G=AlbusGoals,M=AlbusMoneyMask,B=AlbusBackup,R=AlbusExpenseReuse,H=AlbusEmergency,P=AlbusPriorities,Z=AlbusReconciliation;
 const KEY='albus-calendar-local-v1',root=document.getElementById('app');
 const TYPES={event:'Evento',expense:'Despesa',income:'Receita',goal:'Objetivo',task:'Tarefa',reserve:'Reserva ou investimento'};
 const CATEGORIES=['Salário','Alimentação','Transporte','Saúde','Moradia','Lazer','Educação','Casa','Pessoal','Outros','Precaução'];
@@ -162,7 +162,8 @@ function monthlySummaryModal(m){
  const item=(x,canEdit=true)=>'<div class="albus-summary-row"><span class="albus-summary-row-details"><b>'+esc(x.title||'Lançamento')+'</b><small>'+
   dateText(x)+(x.payment_method==='credit'?' · Cartão':'')+(x.virtual_portfolio?' · Planejado':'')+'</small></span>'+
   '<strong>'+mny(x.amount_cents)+'</strong>'+
-  (canEdit&&!x.virtual_portfolio?button('Editar','edit-entry','data-id="'+esc(x.id)+'" data-occurrence="'+esc(x.occurrence_date||x.entry_date)+'"','albus-tiny-button'):'')+
+  (canEdit&&!x.virtual_portfolio?button('Editar','edit-entry','data-id="'+esc(x.id)+'" data-occurrence="'+esc(x.occurrence_date||x.entry_date)+'"','albus-tiny-button')+
+ (['expense','income'].includes(x.entry_type)&&x.display_date<=today()?button('Atualizar realizado','reconcile-entry','data-id="'+esc(x.id)+'" data-occurrence="'+esc(x.occurrence_date||x.entry_date)+'"','albus-small-confirm'):''):'')+
  '</div>';
  const title={income:'Receitas',expense:'Pagamentos previstos',reserve:'Reservas, objetivos e imprevistos',balance:'Resumo do mês'}[kind]||'Resumo do mês';
  const head='<div class="albus-summary-modal-lead">'+esc(month)+' · '+esc(title)+'</div>';
@@ -195,8 +196,7 @@ function monthlySummaryModal(m){
    return '<div class="albus-summary-row albus-contribution-row">'+
     '<span class="albus-summary-row-details"><b>'+esc(x.title)+'</b>'+
     '<small>'+esc(stateLabel)+'</small></span><strong>'+mny(x.amount_cents)+'</strong>'+
-    (isDue?button('Confirmar aporte','confirm-portfolio',
-      'data-id="'+esc(x.goal_id)+'" data-date="'+esc(x.entry_date)+'" data-amount="'+x.amount_cents+'"','albus-small-confirm'):'')+
+    ''+
     '</div>';
   };
   const cap=P.budget(db,E,H,E.monthOf(today()));
@@ -205,7 +205,8 @@ function monthlySummaryModal(m){
    '<div class="albus-reserve-figures"><span>Aportes: <b>'+mny(sum.reserve)+'</b></span><span>Imprevistos: <b>'+mny(sum.provision)+'</b></span>'+
    '<span>Limite mensal de aportes: <b>'+mny(cap.cents)+'</b></span></div>'+
    '<div class="albus-summary-modal-actions">'+button('⚙ Ajustar limite','portfolio-settings','','secondary-button')+
-   button('◎ Ver objetivos','open-goals','','secondary-button')+'</div>'+
+   button('◎ Ver objetivos','open-goals','','secondary-button')+
+ button('Atualizar reservas','review-reserves','','primary-button')+'</div>'+
    '<h3>Aportes a confirmar</h3><div class="albus-summary-items">'+
    (planned.map(line).join('')||'<p class="albus-small">Nenhum aporte automático pendente neste mês.</p>')+'</div>'+
    (confirmed.length?'<h3>Aportes realizados</h3>'+confirmed.map(x=>item(x,false)).join(''):'')+
@@ -318,10 +319,13 @@ function row(x,child=false){
  '<span class="text"><b>'+esc(x.title)+'</b><div class="caption">Aporte programado · confirme no resumo de Reservas, objetivos e imprevistos</div></span>'+
  '<span class="albus-entry-price">'+mny(x.amount_cents)+'</span></div>';
  return '<div class="albus-row" data-drag-kind="entry" data-drag-id="'+esc(x.id)+'" data-occurrence="'+esc(x.occurrence_date||x.entry_date)+'"><span class="albus-grip albus-drag-handle" title="Segure e arraste">⠿</span>'+
- '<span class="text"><b>'+esc(x.title)+'</b><div class="caption">'+esc(desc)+'</div></span>'+
+ '<span class="text"><b>'+esc(x.title)+'</b><div class="caption">'+esc(desc)+
+ (Z.isReconciled(x)?' · Realizado: '+mny(x.amount_cents)+' (previsto: '+mny(x.planned_amount_cents??x.amount_cents)+')':
+ x.display_date<today()&&['expense','income','reserve'].includes(x.entry_type)?' · A conferir':'')+'</div></span>'+
  (x.entry_type==='task'?'':'<span class="albus-entry-price '+(x.entry_type==='income'?'in':'')+'">'+mny(x.amount_cents)+'</span>')+
  button('✎','edit-entry','data-id="'+esc(x.id)+'" data-occurrence="'+esc(x.occurrence_date||x.entry_date)+'"','albus-tiny-button ghost')+
  button('↔','move-entry','data-id="'+esc(x.id)+'" data-occurrence="'+esc(x.occurrence_date||x.entry_date)+'"','albus-tiny-button ghost')+
+ (['expense','income'].includes(x.entry_type)&&x.display_date<=today()?button('Atualizar','reconcile-entry','data-id="'+esc(x.id)+'" data-occurrence="'+esc(x.occurrence_date||x.entry_date)+'"','albus-tiny-button albus-reconcile-action'):'')+
  (x.entry_type==='expense'?button('⧉','reuse-entry','data-id="'+esc(x.id)+'" data-occurrence="'+esc(x.occurrence_date||x.entry_date)+'" title="Reutilizar despesa" aria-label="Reutilizar despesa"','albus-tiny-button ghost'):'')+
  (x.entry_type==='expense'&&x.event_id?button('↗','detach-entry','data-id="'+esc(x.id)+'" title="Desvincular despesa do evento" aria-label="Desvincular despesa"','albus-tiny-button ghost'):'')+'</div>';
 }
@@ -351,7 +355,7 @@ function entryForm(m){
  const pm=old?.payment_method||(db.settings.profile==='credit'?'credit':'pix');
  return modal(old?'Editar lançamento':'Criar '+(TYPES[kind]||'lançamento'),
  '<form id="entry-form"><div class="field"><label>Título</label><input name="title" id="entry-title" required maxlength="100" value="'+esc(old?.title||'')+'" placeholder="Ex.: salário, consulta, mercado"/><div id="title-suggestions" class="albus-suggestions"></div></div>'+
- '<div class="field-row"><div class="field"><label>Tipo</label><select name="entry_type" id="entry-type">'+options(Object.entries(TYPES).filter(x=>!['event','goal'].includes(x[0])),kind)+'</select></div>'+
+ '<div class="field-row"><div class="field"><label>Tipo</label><select name="entry_type" id="entry-type">'+options(Object.entries(TYPES).filter(x=>!['event','goal'].includes(x[0])&&(old||x[0]!=='reserve')),kind)+'</select></div>'+
  '<div class="field"><label id="entry-date-label">Data</label><input type="date" name="entry_date" id="entry-date" value="'+date+'" required/></div></div>'+
  '<div class="field-row" id="amount-row"><div class="field"><label>Valor (R$)</label>'+moneyInput('amount',old?.amount_cents||0)+'</div>'+
  '<div class="field"><label>Categoria</label><select id="entry-category" name="category">'+options(CATEGORIES.map(c=>[c,c]),old?.category||(kind==='income'?'Salário':'Outros'))+'</select></div></div>'+
@@ -522,7 +526,7 @@ function goalDetails(m){
  (reached?'<div class="albus-success-goal">Reserva concluída. Considere começar outro objetivo e continue revisando suas despesas e o saldo da reserva.</div>':'')+
  '<p class="albus-small">A projeção não acrescenta rendimentos ao saldo real. Atualize periodicamente o saldo segundo os rendimentos reais do banco ou fundo. Impostos e taxas não são considerados.</p>'+
  '<div class="form-footer">'+(H.isEmergency(goal)?button('Atualizar reserva de emergência','review-emergency','data-id="'+esc(goal.id)+'"','secondary-button'):'')+
- button('Editar','edit-goal','data-id="'+esc(goal.id)+'"','secondary-button')+button('+ Registrar aporte','add-contribution','data-id="'+esc(goal.id)+'"','primary-button')+'</div>');
+ button('Editar','edit-goal','data-id="'+esc(goal.id)+'"','secondary-button')+button('Atualizar reservas do mês','review-reserves','','primary-button')+'</div>');
 }
 function emergencyReview(m){
  // A atualização é uma edição dos valores assumidos pelo usuário.
@@ -689,6 +693,8 @@ function render(){
  '<div class="albus-footer"><b>Entenda o mês:</b> receitas previstas financiam pagamentos com vencimento neste mês, inclusive faturas de compras anteriores. Compras no cartão para meses futuros: '+mny(s.futureCard)+'. Sem duplicidade.</div>'+
  '</main>'+(
  state.modal?.type==='monthly-summary'?monthlySummaryModal(state.modal):
+ state.modal?.type==='reconcile-entry'?reconciliationEntryForm(state.modal):
+ state.modal?.type==='review-reserves'?monthlyGoalReviewForm(state.modal):
  state.modal?.type==='entry'?entryForm(state.modal):
  state.modal?.type==='event'?eventForm(state.modal):
  state.modal?.type==='event-expense'?eventForm({id:state.eventSession?.id,date:state.eventSession?.draft?.date})+eventExpenseForm():
@@ -904,6 +910,8 @@ function bind(){
   if(action==='day'){state.day=el.dataset.date;state.detailsOpen=true;state.message='';return render()}
   if(action==='close-details'){state.detailsOpen=false;state.createOpen=false;return render()}
   if(action==='summary')return open('monthly-summary',{kind});
+  if(action==='review-reserves')return open('review-reserves');
+  if(action==='reconcile-entry')return open('reconcile-entry',{id:item,occurrence:el.dataset.occurrence||state.day});
   if(action==='toggle-goals'){state.goalsOpen=!state.goalsOpen;return render()}
   if(action==='open-goals'){state.goalsOpen=true;state.modal=null;return render()}
   if(action==='previous'||action==='next'){state.month=E.addMonths(state.month,action==='previous'?-1:1);state.day=E.dateInMonth(state.month,Number(state.day.slice(-2)));return render()}
@@ -1016,6 +1024,8 @@ function bind(){
  for(const field of root.querySelectorAll('input[name="responsible_ids"]'))field.addEventListener('change',()=>{const all=root.querySelector('#all-members');if(all)all.checked=[...root.querySelectorAll('input[name="responsible_ids"]')].every(x=>x.checked)});
  const formBind=(name,fn)=>root.querySelector(name)?.addEventListener('submit',fn);
  formBind('#portfolio-settings-form',savePortfolioSettings);
+ formBind('#reconcile-entry-form',submitEntryReconciliation);
+ formBind('#monthly-goal-review-form',submitGoalReconciliation);
  formBind('#reuse-form',submitReuse);formBind('#entry-form',submitEntry);formBind('#event-form',submitEvent);formBind('#event-expense-form',submitEventExpense);formBind('#goal-form',submitGoal);formBind('#contribution-form',submitContribution);formBind('#settings-form',submitSettings);
  formBind('#move-form',e=>{e.preventDefault();try{move(state.modal.kind,state.modal.id,new FormData(e.currentTarget).get('date'),false,state.modal.occurrence)}catch(err){error(err)}});
  updateEntryUI();
