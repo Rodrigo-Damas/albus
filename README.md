@@ -216,3 +216,15 @@ Arquivos alterados: `goal-priorities.js`, `app-v3.js`; testes: `tests/always-on-
 - O armazenamento segue na chave `albus-calendar-local-v1` e utiliza snapshots antes de gravar alterações. Nenhum histórico existente foi apagado; alterações continuam restritas à branch da PR #3.
 
 Validação: testes `tests/goal-balance-and-confirmation.test.cjs` mais verificação de integração do editor e da conciliação entre saldo, histórico e novos depósitos. Revisão visual manual no navegador ainda recomendada.
+
+## MVP com calendário como interface principal (05/11/2026)
+
+- **Quatro indicadores financeiros clicáveis**, mantendo a faixa de rolagem fixa: Receitas, Pagamentos previstos, Reservas/objetivos/imprevistos e Valor a destinar/Déficit. Cada clique abre um painel modal do próprio Albus com discriminação dos lançamentos. A **origem dos pagamentos** (cartão de meses anteriores, cartão do mês, Pix/débito/dinheiro) agora aparece somente dentro do detalhamento de Pagamentos, não ocupa uma faixa fixa adicional.
+- **Aportes no resumo mensal:** o detalhe diário deixa de ter o botão de confirmar reserva. Em **Reservas, objetivos e imprevistos**, os aportes gerados pela fila mostram as situações `Programado para`, `Previsto para hoje` ou `Pendente desde`, conforme a data. **Confirmar aporte** fica disponível ali quando a data de referência for hoje ou anterior. O limite mensal é ajustável no mesmo painel.
+- **Objetivos recolhíveis:** botão **Objetivos e reservas** mostra a contagem e alterna expandido/recolhido; inicia recolhido, sem ocultar as caixinhas existentes no armazenamento. A criação, edição e reordenação continuam disponíveis ao expandir.
+- **Configurações centralizadas:** removida a barra lateral de filtros da página principal. Um único botão **Configurações** abre seleções de como costuma pagar, exibir compras por data de compra ou pagamento, datas de cartão, provisões e imprevistos. Alterações são persistidas juntas via `B.save`. O filtro por participantes não aparece no MVP principal, mas a modelagem de participantes permanece intacta para futura evolução multiusuário.
+- **Calendário ampliado:** é a única coluna principal até o usuário clicar em um dia. O detalhe aparece à direita em desktops, reduzindo o espaço do calendário, e fica abaixo no mobile. O usuário pode fechar o painel para retornar à visualização ampla. Cliques e acionamento por teclado continuam selecionando o dia, e o drag-and-drop de eventos/despesas foi preservado.
+- **Mobile-first progressivo:** áreas clicáveis, indicadores em duas colunas, grade de dias compacta e detalhamento responsivo. Devem ser feitos testes manuais em dispositivos e navegadores reais antes de considerar a UX final.
+- **Compatibilidade:** a chave local `albus-calendar-local-v1` não foi alterada; funcionalidades existentes de exportação e importação continuam disponíveis. A PR #3 segue sem merge e produção sem alterações.
+
+Teste adicional: `tests/calendar-first-mvp.test.cjs`. Renderização isolada validada para o calendário, os quatro cards, resumos, configurações e dados persistidos.
