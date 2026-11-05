@@ -562,14 +562,41 @@ function submitEvent(ev){
 }
 function submitGoal(ev){
  ev.preventDefault();try{
- const f=new FormData(ev.currentTarget),old=db.goals.find(x=>x.id===state.modal.id),title=String(f.get('title')||'').trim(),target=E.parseMoney(f.get('target'));
- if(!title||!target)throw Error('Informe nome e meta maior que zero.');
- const percent=Number(f.get('cdi_percent')),manual=String(f.get('manual_cdi_annual')||'');
+ const f=new FormData(ev.currentTarget),old=db.goals.find(x=>x.id===state.modal.id);
+ const type=String(f.get('goal_type')||'general'),emergency=type==='emergency';
+ let title=String(f.get('title')||'').trim();
+ if(emergency&&!title)title='Reserva de emergência';
+ if(!title)throw Error('Informe um nome para o objetivo.');
+ if(emergency&&db.goals.some(g=>H.isEmergency(g)&&g.id!==old?.id))
+    throw Error('Já existe uma reserva de emergência. Edite a caixinha existente.');
+ const cost=emergency?E.parseMoney(f.get('monthly_cost')):0;
+ const coverage=Number(f.get('coverage_months')||6);
+ if(emergency&&cost<=0)throw Error('Informe um custo mensal estimado para definir a reserva.');
+ const target=emergency?H.emergencyTarget(cost,coverage):E.parseMoney(f.get('target'));
+ const monthly=E.parseMoney(f.get('monthly')),initial=E.parseMoney(f.get('initial'));
+ const date=String(f.get('contribution_date')||state.day);
+ const schedule=f.has('schedule_enabled')&&monthly>0;
+ if(!target)throw Error('A meta precisa ser maior que zero.');
+ if(!E.dateParts(date))throw Error('Escolha uma data válida para os aportes.');
+ if(schedule&&monthly<=0)throw Error('Informe o valor do aporte mensal.');
+ const percent=Number(f.get('cdi_percent')),manual=String(f.get('manual_cdi_annual')||'').trim();
  if(!Number.isFinite(percent)||percent<0||percent>300)throw Error('Percentual do CDI inválido.');
  if(manual!==''&&(!Number.isFinite(Number(manual))||Number(manual)<0||Number(manual)>100))throw Error('Taxa manual inválida.');
- const value={...owners(f,old),title,target_cents:target,initial_cents:E.parseMoney(f.get('initial')),monthly_cents:E.parseMoney(f.get('monthly')),cdi_percent:percent,manual_cdi_annual:manual===''?null:Number(manual)};
- if(old)Object.assign(old,value);else db.goals.push({id:id(),...value});
- state.modal=null;state.message='Caixinha salva. Registre um aporte para incrementar o saldo real.';safe();render();
+ const ownership=owners(f,old);
+ const value={...ownership,title,goal_type:type,target_cents:target,initial_cents:initial,
+  monthly_cents:monthly,monthly_cost_cents:cost,
+  income_reference_cents:emergency?E.parseMoney(f.get('income_reference')):0,
+  coverage_months:emergency?coverage:null,contribution_date:date,schedule_enabled:schedule,
+  cdi_percent:percent,manual_cdi_annual:manual===''?null:Number(manual)};
+ const goal={...(old||{}),id:old?.id||id(),...value};
+ const next={...db,goals:old?db.goals.map(g=>g.id===goal.id?goal:g):[...db.goals,goal]};
+ const planned=H.syncSchedule(next,goal,E,today(),id);
+ // A meta, o calendário recorrente e os dados anteriores são salvos juntos.
+ B.save(localStorage,planned);
+ Object.assign(db,planned);
+ state.modal=null;
+ state.message=goal.schedule_enabled?'Objetivo salvo e aporte mensal previsto no calendário. Confirme cada depósito para atualizar o saldo real.':'Objetivo salvo. Os aportes podem ser registrados a qualquer momento.';
+ render();
  }catch(e){error(e)}
 }
 function submitContribution(ev){
@@ -655,6 +682,7 @@ function bind(){
   if(action==='today'){state.month=E.monthOf(today());state.day=today();return render()}
   if(action==='toggle-create'){state.createOpen=!state.createOpen;return render()}
   if(action==='create'){return open(kind==='goal'?'goal':kind==='event'?'event':'entry',{kind,date:state.day})}
+  if(action==='new-emergency')return open('goal',{kind:'emergency'});
   if(action==='close'){
    if(state.modal?.type==='event-expense'){
      state.modal={type:'event',id:state.eventSession?.id,date:state.eventSession?.draft?.date||state.day};state.error='';return render();
@@ -729,6 +757,9 @@ function bind(){
  listen('#owner-filter',e=>{state.filter=e.target.value;render()});
  listen('#payment-profile',e=>{db.settings.profile=e.target.value;safe();if(db.settings.profile==='credit'&&!db.settings.cardConfigured)return open('settings');render()});
  listen('#calendar-view',e=>{db.settings.view=e.target.value;safe();render()});
+ listen('#goal-type',updateGoalUI);
+ listen('#coverage-months',updateGoalUI);
+ root.querySelector('input[name="monthly_cost"]')?.addEventListener('input',updateGoalUI);
  listen('#entry-type',updateEntryUI);listen('#entry-category',updateEntryUI);listen('#payment-method',updateEntryUI);listen('#entry-frequency',updateEntryUI);listen('#entry-date',updateEntryUI);
  listen('#visibility',e=>{const inputs=root.querySelectorAll('input[name="responsible_ids"]');inputs.forEach(i=>{if(e.target.value==='private'){i.checked=i.value===state.user;i.disabled=i.value!==state.user}else i.disabled=false;});const all=root.querySelector('#all-members');if(all)all.disabled=e.target.value==='private';});
  listen('#all-members',e=>{root.querySelectorAll('input[name="responsible_ids"]').forEach(i=>{if(!i.disabled)i.checked=e.target.checked})});
@@ -737,6 +768,7 @@ function bind(){
  formBind('#reuse-form',submitReuse);formBind('#entry-form',submitEntry);formBind('#event-form',submitEvent);formBind('#event-expense-form',submitEventExpense);formBind('#goal-form',submitGoal);formBind('#contribution-form',submitContribution);formBind('#settings-form',submitSettings);
  formBind('#move-form',e=>{e.preventDefault();try{move(state.modal.kind,state.modal.id,new FormData(e.currentTarget).get('date'),false,state.modal.occurrence)}catch(err){error(err)}});
  updateEntryUI();
+ updateGoalUI();
  for(const c of root.querySelectorAll('.albus-day[role="button"]'))c.addEventListener('keydown',e=>{if(e.target===c&&(e.key==='Enter'||e.key===' ')){e.preventDefault();state.day=c.dataset.date;render()}});
  // Delegação por Pointer Events: funciona com mouse, toque e caneta.
  // Não depende do drag-and-drop HTML nativo, que falha em navegadores móveis.
