@@ -542,6 +542,96 @@ function confirmGoalDeletion(m){
  '<div class="form-footer">'+button('Cancelar','cancel-goal-delete','','secondary-button')+
  button('Sim, excluir caixinha','approve-goal-delete','data-id="'+esc(goal.id)+'"','primary-button albus-danger-confirm')+'</div></div>');
 }
+function reconciliationEntryForm(m){
+ const src=db.entries.find(x=>x.id===m.id);
+ if(!src)return '';
+ const occurrence=m.occurrence||src.entry_date;
+ const matches=E.occurrencesForMonth([src],db.overrides,E.monthOf(occurrence),db.settings,'cash');
+ const item=matches.find(x=>x.occurrence_date===occurrence)||src;
+ const isDone=Z.isReconciled(item)||['paid','received'].includes(item.status);
+ const proposed=item.planned_amount_cents??src.planned_amount_cents??src.amount_cents;
+ const value=item.realized_amount_cents??item.amount_cents;
+ const actualDate=item.realized_date||today();
+ return modal('Atualizar realizado · '+src.title,
+ '<p class="albus-small">Confira o que foi previsto e informe quanto realmente '+(src.entry_type==='income'?'recebeu':'pagou')+'. O planejamento original será preservado.</p>'+
+ '<form id="reconcile-entry-form">'+
+ '<div class="albus-review-columns"><div><small>Valor planejado</small><strong>'+mny(proposed)+'</strong></div>'+
+ '<div><small>Data prevista</small><strong>'+fmt(item.display_date||occurrence)+'</strong></div></div>'+
+ '<div class="field"><label>O que aconteceu?</label><select name="result">'+
+ options([['done',src.entry_type==='income'?'Recebi':'Paguei'],['not_done','Não aconteceu']],item.reconciliation_state==='not_done'?'not_done':'done')+
+ '</select></div>'+
+ '<div class="field"><label>Valor realizado (R$)</label>'+moneyInput('actual',isDone?value:proposed,'required')+'</div>'+
+ '<div class="field"><label>Data em que aconteceu</label><input name="realized_date" type="date" max="'+today()+'" value="'+actualDate+'" required/></div>'+
+ '<p class="albus-small">Se o valor for diferente, os totais do mês serão atualizados com o realizado. A previsão continuará disponível para comparação.</p>'+
+ '<div class="form-footer">'+button('Cancelar','close','','secondary-button')+
+ '<button type="submit" class="primary-button">Salvar realizado</button></div></form>');
+}
+function submitEntryReconciliation(event){
+ event.preventDefault();
+ try{
+  const f=new FormData(event.currentTarget),src=db.entries.find(x=>x.id===state.modal?.id);
+  if(!src)throw Error('Lançamento não encontrado.');
+  const expectedStatus=src.entry_type==='income'?'received':'paid';
+  const status=f.get('result')==='not_done'?'not_done':expectedStatus;
+  const value=f.get('result')==='not_done'?0:E.parseMoney(f.get('actual'));
+  const actualDate=String(f.get('realized_date')||today());
+  const next=Z.reconcileEntry(db,src.id,state.modal.occurrence||src.entry_date,value,status,actualDate,E);
+  B.save(localStorage,next);Object.assign(db,next);
+  state.modal=null;state.message='Realizado atualizado. O planejado foi preservado.';
+  render();
+ }catch(err){error(err);}
+}
+function monthlyGoalReviewForm(){
+ const month=state.month,rows=cashRows(month,'cash'),visibleGoals=P.ordered(goals());
+ const upcoming=visibleGoals.map(goal=>{
+  const recorded=Z.byMonth(db,goal.id,month);
+  const existing=Z.goalAlreadyCompleted(db,goal.id,month,E,db.settings);
+  const projected=rows.find(x=>x.virtual_portfolio&&x.goal_id===goal.id);
+  if(!recorded&&!projected)return null;
+  const item=recorded||projected,when=item.entry_date;
+  if(!recorded&&when>today())return null;
+  const plan=recorded?.planned_amount_cents??projected?.amount_cents??goal.monthly_cents;
+  const actual=recorded?.realized_amount_cents??(existing?existing.amount_cents:plan);
+  const editable=!(existing&&!recorded&&existing.frequency&&existing.frequency!=='none');
+  return {goal,when,plan,actual,editable,recorded};
+ }).filter(Boolean);
+ return modal('Atualizar reservas e objetivos · '+monthTitle(month),
+ '<p class="albus-small">Revise o que realmente foi reservado no mês. Os valores previstos já aparecem preenchidos; cada objetivo é atualizado uma única vez por mês e pode ser corrigido depois.</p>'+
+ '<form id="monthly-goal-review-form"><div class="albus-summary-items">'+
+ (upcoming.length?upcoming.map(x=>'<div class="albus-review-goal">'+
+ '<div class="albus-summary-row-details"><b>'+esc(x.goal.title)+'</b><small>Planejado: '+mny(x.plan)+' · '+fmt(x.when)+
+ (x.recorded?' · Já atualizado':' · A conferir')+'</small></div>'+
+ (x.editable?'<input type="hidden" name="goal_id" value="'+esc(x.goal.id)+'"/>'+
+ '<label class="field">Valor realizado (R$)'+moneyInput('actual_'+x.goal.id,x.actual)+'</label>'+
+ '<label class="field">Data da realização<input type="date" name="date_'+esc(x.goal.id)+'" value="'+esc(x.recorded?.realized_date||today())+'" max="'+today()+'" required/></label>':
+ '<p class="albus-small">Aporte antigo recorrente já realizado. Edite a ocorrência original para corrigi-lo.</p>')+
+ '</div>').join(''):'<p class="albus-small">Não há aportes com data vencida neste mês. Os futuros continuam como planejamento.</p>')+
+ '</div><div class="form-footer">'+button('Cancelar','close','','secondary-button')+
+ (upcoming.some(x=>x.editable)?'<button type="submit" class="primary-button">Salvar realizado do mês</button>':'')+'</div></form>');
+}
+function submitGoalReconciliation(event){
+ event.preventDefault();
+ try{
+  const f=new FormData(event.currentTarget),month=state.month;
+  const before=cashRows(month,'cash'),goalsIds=f.getAll('goal_id').map(String);
+  if(!goalsIds.length)throw Error('Não há aportes a atualizar.');
+  let next=db;
+  for(const goalId of goalsIds){
+   if(!goals().some(g=>g.id===goalId))throw Error('Objetivo indisponível.');
+   const actual=E.parseMoney(f.get('actual_'+goalId));
+   const date=String(f.get('date_'+goalId)||today());
+   const candidate=before.find(x=>x.virtual_portfolio&&x.goal_id===goalId);
+   const existing=Z.byMonth(next,goalId,month);
+   if(!candidate&&!existing)throw Error('Não existe previsão disponível para '+goalId+'.');
+   const planned=candidate||{amount_cents:existing?.planned_amount_cents??0};
+   next=Z.reconcileGoal(next,goalId,month,actual,date,planned,id,E);
+  }
+  B.save(localStorage,next);Object.assign(db,next);
+  state.modal={type:'monthly-summary',kind:'reserve'};
+  state.message='Reservas do mês atualizadas. Nenhum aporte foi duplicado.';
+  render();
+ }catch(err){error(err);}
+}
 function contributionForm(m){
  const goal=db.goals.find(x=>x.id===m.id);if(!goal)return '';
  return modal('Aporte · '+goal.title,'<form id="contribution-form">'+
