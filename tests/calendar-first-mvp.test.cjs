@@ -58,7 +58,7 @@ test('atualizar realizado aparece no resumo de reservas, nunca no dia',()=>{
  api.state.detailsOpen=true;api.render();
  assert.doesNotMatch(root.innerHTML,/data-action="confirm-portfolio"/);
  api.open('monthly-summary',{kind:'reserve'});
- assert.match(root.innerHTML,/Aportes a confirmar/);
+ assert.match(root.innerHTML,/Aportes planejados · a conferir/);
  assert.match(root.innerHTML,/data-action="review-reserves"/);
  assert.doesNotMatch(root.innerHTML,/data-action="confirm-portfolio"/);
 });
