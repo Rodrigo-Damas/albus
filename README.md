@@ -163,3 +163,13 @@ A rentabilidade pelo CDI permanece uma simulação; não é creditada automatica
 **Compatibilidade e segurança:** chaves `albus-calendar-local-v1` e `albus-calendar-local-v1-snapshot` mantidas. Ao salvar a meta, `goals` e a série recorrente são gravadas atomicamente pelo mecanismo de backup já existente, antes de atualizar a memória da interface. Editar aporte, dia ou participante encerra a série automática antiga após o mês corrente e inicia a nova no próximo mês, preservando ocorrências e confirmações anteriores. Uma série mensal pré-existente, cadastrada pelo usuário antes desta versão, não será duplicada automaticamente. Sem sincronização entre dispositivos ou login real.
 
 Arquivos: `emergency-planning.js`, `app-v3.js`, `engine.js`, `app-v2.css` e testes `tests/emergency-reserve.test.cjs` (11 casos). Testes do motor e renderização inicial passaram; ainda é necessária revisão manual do fluxo completo de cadastro, confirmação de aportes e layout em celulares.
+
+## Revisão conservadora de custos e receitas (05/11/2026)
+
+No cadastro da reserva de emergência, as referências de **receita familiar** e **custo mensal essencial** passam a utilizar os últimos meses encerrados com lançamentos (até três encontrados nos seis meses anteriores). Quando apenas um mês com dados existe, utiliza-se esse mês. Com dois ou três meses: **receita = média aritmética simples**; **custo = 70% da média dos meses + 30% do maior mês**, inclinando a estimativa para o valor mais elevado, por prudência. Se não houver meses anteriores com dados, o mês atual pode ser utilizado, identificado como parcial. Sem nenhum lançamento, os dois valores ficam zero e são informados manualmente.
+
+**Limitação de integridade:** a presença de despesas em um mês não garante que todos os gastos foram cadastrados. A interface informa os meses usados, a fórmula e o risco de histórico incompleto; não afirma que um mês está preenchido integralmente sem confirmação. O usuário sempre pode corrigir os valores manualmente.
+
+Na caixinha de reserva de emergência, o botão **Atualizar reserva de emergência** mostra comparação entre custos e receitas atuais e as novas sugestões, meses de referência e uma margem estimada disponível para aportes (após despesas totais, reservas de outros objetivos e provisão de imprevistos). **Nenhuma alteração é automática:** o botão **Revisar meta e aporte** preenche o formulário para análise, mantendo o aporte mensal atual até o usuário alterá-lo e salvar.
+
+A alteração preserva `albus-calendar-local-v1`, não altera lançamentos anteriores e mantém programação de aportes sem dupla contagem. Testes adicionados: `tests/emergency-review.test.cjs`; validação de 12 verificações isoladas, incluindo abertura da revisão e preservação dos dados.
